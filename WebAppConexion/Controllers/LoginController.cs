@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -21,26 +22,39 @@ namespace WebAppConexion.Controllers
     {
         private readonly LoginRepository _repository;
         private readonly IConfiguration _config;
-        public LoginController(LoginRepository repository, IConfiguration config)
+        private readonly ILogger<LoginController> _logger;
+        public LoginController(LoginRepository repository, IConfiguration config, ILogger<LoginController> logger)
         {
             this._repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _config = config;
+            _logger = logger;
         }
         [HttpPost("[action]")]
         public async Task<IActionResult> Login([FromBody] LoginViewModel model)
         {
             if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
+            {
+                _logger.LogWarning("Login fallido: request vacío desde {IP}", HttpContext.Connection.RemoteIpAddress);
                 return Unauthorized();
+            }
 
             var response = await _repository.GetByMostrarLogin(model.Email);
             if (response == null || response.IdEmpleado == 0)
+            {
+                _logger.LogWarning("Login fallido: usuario no encontrado '{Email}' desde {IP}", model.Email, HttpContext.Connection.RemoteIpAddress);
                 return Unauthorized();
+            }
 
             if (response.ClaveTemporal == "")
             {
                 if (!VerificarPasswordHash(model.Password, response.password_hash, response.password_salt))
+                {
+                    _logger.LogWarning("Login fallido: contraseña incorrecta para '{Email}' desde {IP}", model.Email, HttpContext.Connection.RemoteIpAddress);
                     return Unauthorized();
+                }
             }
+
+            _logger.LogInformation("Login exitoso: '{Email}' desde {IP}", model.Email, HttpContext.Connection.RemoteIpAddress);
 
             var claims = new List<Claim>
             {

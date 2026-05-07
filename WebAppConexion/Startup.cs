@@ -1,3 +1,4 @@
+using AspNetCoreRateLimit;
 using Conexion.AccesoDatos.Repository.Administracion;
 using Conexion.AccesoDatos.Repository.Negocio;
 using Conexion.AccesoDatos.Repository.Usuario;
@@ -67,6 +68,13 @@ namespace WebAppConexion
             services.AddScoped<EnviarNotificacionRepository>();
             services.AddScoped<VacacionesRepository>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
+
+            services.AddMemoryCache();
+            services.Configure<IpRateLimitOptions>(Configuration.GetSection("IpRateLimiting"));
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+            services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
             //services.AddDbContext<DbContextProyectoColegio>(options =>
             //    options.UseSqlServer(Configuration.GetConnectionString("Conexion")));
 
@@ -118,6 +126,7 @@ namespace WebAppConexion
             //    .AllowCredentials();
             //}
             //);
+            app.UseIpRateLimiting();
             app.UseCors("Todos");
             app.UseHttpsRedirection();
 
