@@ -1,0 +1,20 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Conexion.Entidad.Negocio
+{
+    public class FiltroVacaciones
+    {
+        public Int64 IdVacaciones { get; set; }
+        public Int64 IdEmpleado { get; set; }
+        public DateTime FechaDesde { get; set; }
+        public DateTime FechaHasta { get; set; }
+        public Int64 IdTipoSolicitud { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public int Filtro { get; set; }
+        public int Tipo { get; set; }
+    }
+}

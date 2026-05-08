@@ -19,5 +19,9 @@ namespace WebAppConexion.Models
         public DateTime FechaInicioPauta { get; set; }
         public DateTime FechaFinalPauta { get; set; }
         public string NumContrato { get; set; }
+        public int Estado { get; set; }
+        public decimal TotalNegocio { get; set; }
+        public decimal TotalSegundos { get; set; }
+        public string RucVendedor { get; set; }
     }
 }

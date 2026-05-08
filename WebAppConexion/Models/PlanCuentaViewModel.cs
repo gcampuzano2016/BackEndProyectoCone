@@ -17,5 +17,7 @@ namespace WebAppConexion.Models
         public decimal SaldoFinal { get; set; }
         public int Tipo { get; set; }
         public int Estado { get; set; }
+
+        public DateTime FechaCierre { get; set; }
     }
 }

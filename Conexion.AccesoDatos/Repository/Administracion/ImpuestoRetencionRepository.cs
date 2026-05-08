@@ -1,4 +1,5 @@
 ﻿using Conexion.Entidad.Administracion;
+using Conexion.Entidad.Negocio;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,47 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             }
         }
 
+        public async Task<IEnumerable<ImpuestoIva>> GetByConsultaImpuestoIva(DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("Consulta_ImpuestoIva", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ImpuestoIva>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToImpuestoIva(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
+        private ImpuestoIva MapToImpuestoIva(SqlDataReader reader)
+        {
+            return new ImpuestoIva()
+            {
+                ruc = reader["ruc"].ToString(),
+                fechaemision = reader["fechaemision"].ToString(),
+                serie = reader["serie"].ToString(),
+                secuencial = reader["secuencial"].ToString(),
+                claveacceso = reader["claveacceso"].ToString(),
+                totalfactura = (decimal)reader["totalfactura"],
+                porcentaje = reader["porcentaje"].ToString(),
+                valorRetenido = (decimal)reader["valorRetenido"],
+            };
+        }
         private Impuesto MapToImpuesto(SqlDataReader reader)
         {
             return new Impuesto()

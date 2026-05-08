@@ -31,8 +31,13 @@ namespace Conexion.Entidad.Negocio
         public int Tipo { get; set; }
         public string jsonContable { get; set; }
         public string RutaDocumento { get; set; }
+        public string RutaDocumentoXML { get; set; }
         public string stringArchivo64 { get; set; }
+        public string stringArchivo64PDF { get; set; }
         public int PorRegistrar { get; set; }
         public decimal Saldo { get; set; }
+        public string Usuario { get; set; }
+        public string Proceso { get; set; }
+        public string NumExtranjero { get; set; }
     }
 }

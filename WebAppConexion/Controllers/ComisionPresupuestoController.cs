@@ -57,6 +57,7 @@ namespace WebAppConexion.Controllers
             db.Comisions = model.Comisions;
             db.Participacion = model.Participacion;
             db.AnioComision = model.AnioComision;
+            db.Generico = model.Generico;
             db.Estado = model.Estado;
             db.Tipo = model.Tipo;
 
@@ -69,9 +70,9 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<PresupuestoMediosViewModel>> MostrarPresupuesto(Int64 IdPresupuesto, Int32 Tipo)
+        public async Task<IEnumerable<PresupuestoMediosViewModel>> MostrarPresupuesto(Int64 IdPresupuesto,Int64 IdMedio, Int64 IdEmpleado, Int32 mes, Int32 anio, Int32 Tipo)
         {
-            var response = await _repository.GetByMostrarPresupuestoMedios(IdPresupuesto, Tipo);
+            var response = await _repository.GetByMostrarPresupuestoMedios(IdPresupuesto, IdMedio, IdEmpleado, mes, anio, Tipo);
 
             return response.Select(s => new PresupuestoMediosViewModel
             {
@@ -92,9 +93,9 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<ComisionViewModel>> MostrarComision(Int64 IdComision, Int32 Tipo)
+        public async Task<IEnumerable<ComisionViewModel>> MostrarComision(Int64 IdComision,Int64 IdMedio, Int64 IdEmpleado, Int32 mes, Int32 anio, Int32 Tipo)
         {
-            var response = await _repository.GetByMostrarComision(IdComision, Tipo);
+            var response = await _repository.GetByMostrarComision(IdComision, IdMedio, IdEmpleado, mes, anio, Tipo);
 
             return response.Select(s => new ComisionViewModel
             {
@@ -106,10 +107,13 @@ namespace WebAppConexion.Controllers
                 Comisions = s.Comisions,
                 Participacion = s.Participacion ,
                 AnioComision = s.AnioComision,
+                Generico = s.Generico ,
                 Estado = s.Estado,
                 Medios = s.Medios,
                 JsonMedio = s.JsonMedio,
                 JsonEmpleado = s.JsonEmpleado,
+                JsonGenerico = s.JsonGenerico,
+                Vendedor =s.Vendedor,
             });
 
         }

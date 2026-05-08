@@ -29,6 +29,10 @@ namespace Conexion.Entidad.Administracion
         public bool act_password { get; set; }
         public string RutaImagen { get; set; }
         public string ClaveTemporal { get; set; }
-
+        public int Valor1 { get; set; }
+        public string Valor2 { get; set; }
+        public string Banco { get; set; }
+        public Int64 IdPlanCuenta { get; set; }
+        public string Descripcion { get; set; }
     }
 }

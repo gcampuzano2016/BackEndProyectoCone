@@ -16,5 +16,6 @@ namespace Conexion.Entidad.Administracion
         public string ArchivoBase64 { get; set; }
         public int Estado { get; set; }
         public int Tipo { get; set; }
+        public string Banco { get; set; }
     }
 }

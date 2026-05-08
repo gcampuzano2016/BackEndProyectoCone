@@ -33,6 +33,7 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                     cmd.Parameters.Add(new SqlParameter("@Comision", comision.Comisions));
                     cmd.Parameters.Add(new SqlParameter("@Participacion", comision.Participacion));
                     cmd.Parameters.Add(new SqlParameter("@AnioComision", comision.AnioComision));
+                    cmd.Parameters.Add(new SqlParameter("@Generico", comision.Generico));
                     cmd.Parameters.Add(new SqlParameter("@Estado", comision.Estado));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", comision.Tipo));
                     await sql.OpenAsync();
@@ -80,7 +81,7 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             }
         }
 
-        public async Task<IEnumerable<PresupuestoMedios>> GetByMostrarPresupuestoMedios(Int64 IdPresupuesto, Int32 Tipo)
+        public async Task<IEnumerable<PresupuestoMedios>> GetByMostrarPresupuestoMedios(Int64 IdPresupuesto, Int64 IdMedio, Int64 IdEmpleado, Int32 mes, Int32 anio, Int32 Tipo)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -88,6 +89,10 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                 {
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdPresupuesto", IdPresupuesto));
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@mes", mes));
+                    cmd.Parameters.Add(new SqlParameter("@anio", anio));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<PresupuestoMedios>();
                     await sql.OpenAsync();
@@ -105,7 +110,7 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             }
         }
 
-        public async Task<IEnumerable<Comision>> GetByMostrarComision(Int64 IdComision, Int32 Tipo)
+        public async Task<IEnumerable<Comision>> GetByMostrarComision(Int64 IdComision, Int64 IdMedio, Int64 IdEmpleado, Int32 mes, Int32 anio, Int32 Tipo)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -113,6 +118,10 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                 {
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdComision", IdComision));
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@mes", mes));
+                    cmd.Parameters.Add(new SqlParameter("@anio", anio));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<Comision>();
                     await sql.OpenAsync();
@@ -170,10 +179,13 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                 Comisions = (decimal)reader["Comision"],
                 Participacion = (decimal)reader["Participacion"],
                 AnioComision = (DateTime)reader["AnioComision"],
+                Generico = reader["Generico"].ToString(),
                 Estado = (Int32)reader["Estado"],
                 Medios = reader["Medios"].ToString(),
                 JsonMedio = reader["JsonMedio"].ToString(),
                 JsonEmpleado = reader["JsonEmpleado"].ToString(),
+                JsonGenerico = reader["JsonGenerico"].ToString(),
+                Vendedor = reader["Vendedor"].ToString(),
             };
         }
     }

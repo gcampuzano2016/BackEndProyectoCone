@@ -16,10 +16,13 @@ namespace Conexion.Entidad.Administracion
         public decimal Comisions { get; set; }
         public decimal Participacion { get; set; }
         public DateTime AnioComision { get; set; }
+        public string Generico { get; set; }
         public int Estado { get; set; }
         public int Tipo { get; set; }
         public string Medios { get; set; }
         public string JsonMedio { get; set; }
         public string JsonEmpleado { get; set; }
+        public string JsonGenerico { get; set; }
+        public string Vendedor { get; set; }
     }
 }

@@ -50,6 +50,8 @@ namespace Conexion.Entidad.Administracion
         public int Numcontrato { get; set; }
         public int NumPauta { get; set; }
         public int NumForeCast { get; set; }
+        public decimal TotalNegocio { get; set; }
+        public decimal TotalSegundos { get; set; }
 
     }
 }

@@ -14,5 +14,6 @@ namespace WebAppConexion.Models
         public decimal Debe { get; set; }
         public decimal Haber { get; set; }
         public string tipo { get; set; }
+        public string NumDocumento { get; set; }
     }
 }

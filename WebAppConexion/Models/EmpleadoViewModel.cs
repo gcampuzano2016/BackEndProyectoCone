@@ -22,6 +22,9 @@ namespace WebAppConexion.Models
         public string FondoReserva { get; set; }
         public int MesesTrabajo { get; set; }
         public int Estado { get; set; }
+        public string Banco { get; set; }
+        public Int64 IdPlanCuenta { get; set; }
+        public string Descripcion { get; set; }
     }
 
 }

@@ -37,5 +37,24 @@ namespace WebAppConexion.Controllers
 
         }
 
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<ImpuestoIvaViewModel>> ConsultaImpuestoIva(DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            var response = await _repository.GetByConsultaImpuestoIva(FechaInicio, FechaFinal, Tipo);
+
+            return response.Select(s => new ImpuestoIvaViewModel
+            {
+                ruc = s.ruc,
+                fechaemision = s.fechaemision,
+                serie = s.serie,
+                secuencial = s.secuencial,
+                claveacceso = s.claveacceso,
+                totalfactura = s.totalfactura,
+                porcentaje = s.porcentaje,
+                valorRetenido = s.valorRetenido,
+            });
+
+        }
+
     }
 }

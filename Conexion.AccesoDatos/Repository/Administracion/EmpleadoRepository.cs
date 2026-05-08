@@ -7,6 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using Twilio;
+using Twilio.Types;
+using Twilio.Rest.Api.V2010.Account;
+
+using System.Diagnostics; // Se importa la librería System.Diagnostics
+
 namespace Conexion.AccesoDatos.Repository.Administracion
 {
     public class EmpleadoRepository
@@ -40,6 +46,8 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                     cmd.Parameters.Add(new SqlParameter("@password_salt", empleado.password_salt));
                     cmd.Parameters.Add(new SqlParameter("@Rol", empleado.Rol));
                     cmd.Parameters.Add(new SqlParameter("@FondoReserva", empleado.FondoReserva));
+                    cmd.Parameters.Add(new SqlParameter("@Banco", empleado.Banco));
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", empleado.IdPlanCuenta));
                     cmd.Parameters.Add(new SqlParameter("@Estado", empleado.Estado));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", empleado.Tipo));
                     await sql.OpenAsync();
@@ -89,6 +97,49 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             }
         }
 
+        public async Task<IEnumerable<Generica>> InsertPermisoMenu(PermisoMenu permiso)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarPermisoMenu", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", permiso.IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@Lista", permiso.Lista));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", permiso.Tipo));
+                    await sql.OpenAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> EnviarMensajeWhatsapp(string Mensaje, string Numero)
+        {
+            var response = new List<Generica>();
+            try
+            {
+                Numero = "+593" + Numero;
+
+                System.Diagnostics.Process.Start("http://api.whatsapp.com/send?phone=" + Numero + "&text=" + Mensaje);
+            }
+            catch (Exception ex)
+            {
+
+            }
+           
+            return response;
+
+        }
+
         public async Task<IEnumerable<Empleado>> GetByMostrarEmpleados(Int64 IdEmpleado,Int32 Tipo)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
@@ -106,6 +157,31 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                         while (await reader.ReadAsync())
                         {
                             response.Add(MapToEmpleados(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<PermisoEmpleado>> GetByMostrarPermisoMenu(Int64 IdEmpleado, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarPermisoMenu", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<PermisoEmpleado>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToPermisoMenu(reader));
                         }
                     }
 
@@ -163,10 +239,23 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                 Correo = reader["Correo"].ToString(),
                 Rol = reader["Rol"].ToString(),
                 FondoReserva = reader["FondoReserva"].ToString(),
+                Banco = reader["Banco"].ToString(),
+                IdPlanCuenta = (Int64)reader["IdPlanCuenta"],
                 Estado = (Int32)reader["Estado"],
+                Descripcion = reader["Descripcion"].ToString(),
             };
         }
 
+        private PermisoEmpleado MapToPermisoMenu(SqlDataReader reader)
+        {
+            return new PermisoEmpleado()
+            {
+                IdMenu = (Int64)reader["IdMenu"],
+                Titulo = reader["Titulo"].ToString(),
+                Estado = (Int32)reader["Estado"],
+                ValorBool = (bool)reader["ValorBool"],
+            };
+        }
         private Generica MapToGenerica(SqlDataReader reader)
         {
             return new Generica()

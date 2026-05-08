@@ -19,5 +19,7 @@ namespace Conexion.Entidad.Negocio
         public int Tipo { get; set; }
         public int Estado { get; set; }
 
+        public DateTime FechaCierre { get; set; }
+
     }
 }

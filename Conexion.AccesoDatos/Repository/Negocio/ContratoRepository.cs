@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using ClosedXML.Excel;
 using System.Globalization;
 using Conexion.AccesoDatos.Repository.CArchivo;
+using System.IO;
 
 namespace Conexion.AccesoDatos.Repository.Negocio
 {
@@ -26,7 +27,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         {
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "");
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "",0);
             string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
             var response2 = new List<Generica>();
             cargar.RutaArchivo = ruta + cargar.nombreArchivo;
@@ -58,28 +59,68 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             System.IO.File.WriteAllBytes(ruta + cargar.nombreArchivo, archivoBytes);
             CargarXLSX cargarXLSX = new CargarXLSX(_connectionString);
             string resul = "";
+            EntRespuesta Respuesta = new EntRespuesta();
+            Generica generica = new Generica();
             if (cargar.IdContrato != 0)
             {
-                resul = cargarXLSX.SubirArchivo(cargar);
+                Respuesta = cargarXLSX.SubirArchivoContrato(cargar);
+                generica.valor1 = Convert.ToInt32(Respuesta.estado);
+                generica.valor2 = Respuesta.mensaje;
+                response.Add(generica);
             }
             else if (cargar.IdForeCast != 0)
             {
                 resul = cargarXLSX.SubirArchivo(cargar);
+                generica.valor1 = 1;
+                generica.valor2 = "DOCUMENTO CARGADO..";
+                response.Add(generica);
             }
-
-            Generica generica = new Generica();
-            generica.valor1 = 1;
-            generica.valor2 = "DOCUMENTO CARGADO..";
-            response.Add(generica);
-
             return  response;
+        }
+
+        public async Task<IEnumerable<Generica>> CargaArchivoPro(CargarArchivo cargar)
+        {
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+            CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "",0);
+            string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
+            var response2 = new List<Generica>();
+            cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+
+            var response = new List<Generica>();
+            byte[] archivoBytes = Convert.FromBase64String(cargar.base64textString);
+            System.IO.File.WriteAllBytes(ruta + cargar.nombreArchivo, archivoBytes);
+            CargarXLSX cargarXLSX = new CargarXLSX(_connectionString);
+            string resul = "";
+            EntRespuesta Respuesta = new EntRespuesta();
+            string dataContrato = "";
+            Generica generica = new Generica();
+            if (cargar.IdContrato != 0)
+            {
+                dataContrato = cargarXLSX.SubirArchivoDetalleContrato(cargar.RutaArchivo);
+                if(dataContrato != "")
+                {
+                    var response3 = await InsertDetalleContratoPro(cargar, dataContrato);
+                    foreach (Generica generica1 in response3)
+                    {
+                        generica.valor1 = generica1.valor1;
+                        generica.valor2 = generica1.valor2;
+                        response.Add(generica);
+                    }
+                    response.Add(generica);
+                }
+                //generica.valor1 = Convert.ToInt32(Respuesta.estado);
+                //generica.valor2 = Respuesta.mensaje;
+                //response.Add(generica);
+            }
+            return response;
         }
 
         public async Task<IEnumerable<Generica>> CargaArchivoRelacion(CargarArchivo cargar)
         {
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "");
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "",0);
             string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
             string rutaFinal = "";
             var response2 = new List<Generica>();
@@ -105,7 +146,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         {
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "");
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "",0);
             string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
             string rutaFinal = "";
             var response2 = new List<Generica>();
@@ -123,12 +164,90 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             datosExtra.IdForeCast = cargar.IdForeCast;
             datosExtra.Tipo = 1;
             datosExtra.Estado = 1;
-            var response3 = await InsertDetalleForecast(datosExtra,resul);
+            var response3 = await InsertDetalleForecastPro(datosExtra,resul);
             Generica generica = new Generica();
             generica.valor1 = 1;
             generica.valor2 = "DOCUMENTO CARGADO..";
             response.Add(generica);
 
+            return response;
+        }
+
+        public async Task<IEnumerable<Generica>> CargaArchivoValidarRelacionMedios(CargarArchivo cargar)
+        {
+            var response = new List<Generica>();
+            Generica generica = new Generica();
+            try
+            {
+                PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+                CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "", 0);
+                string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
+                string rutaFinal = "";
+                var response2 = new List<Generica>();
+                cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+
+                byte[] archivoBytes = Convert.FromBase64String(cargar.base64textString);
+                System.IO.File.WriteAllBytes(ruta + cargar.nombreArchivo, archivoBytes);
+                rutaFinal = ruta + cargar.nombreArchivo;
+                CargarXLSX cargarXLSX = new CargarXLSX(_connectionString);
+                string resul = "";
+                resul = cargarXLSX.SubirArchivoForeCast(rutaFinal);
+                DatosExtra datosExtra = new DatosExtra();
+                datosExtra.IdForeCast = cargar.IdForeCast;
+                datosExtra.Tipo = 1;
+                datosExtra.Estado = 1;
+                var response3 = await ValidarRelacionDeMedios(datosExtra, resul);
+
+                foreach (Generica generica1 in response3)
+                {
+                    generica.valor1 = 1;
+                    generica.valor2 = generica1.valor2;
+                    response.Add(generica);
+                }
+                return response;
+            }
+            catch (Exception ex)
+            {
+                generica.valor1 = 2;
+                generica.valor2 = ex.Message.ToString();
+                response.Add(generica);
+                VerErrores(ex.Message.ToString(), "error", "", 1);
+            }
+            return response;
+        }
+
+
+        public async Task<IEnumerable<Generica>> CargaArchivoValidarRelacionMapaPauta(CargarArchivo cargar)
+        {
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+            CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "",0);
+            string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
+            string rutaFinal = "";
+            var response2 = new List<Generica>();
+            cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+
+
+            var response = new List<Generica>();
+            byte[] archivoBytes = Convert.FromBase64String(cargar.base64textString);
+            System.IO.File.WriteAllBytes(ruta + cargar.nombreArchivo, archivoBytes);
+            rutaFinal = ruta + cargar.nombreArchivo;
+            CargarXLSX cargarXLSX = new CargarXLSX(_connectionString);
+            string resul = "";
+            resul = cargarXLSX.SubirArchivoMapaPautaValidar(rutaFinal);
+            DatosExtra datosExtra = new DatosExtra();
+            datosExtra.IdForeCast = cargar.IdForeCast;
+            datosExtra.Tipo = 1;
+            datosExtra.Estado = 1;
+            var response3 = await ValidarRelacionDeMapaPauta(datosExtra, resul);
+            Generica generica = new Generica();
+            foreach (Generica generica1 in response3)
+            {
+                generica.valor1 = 1;
+                generica.valor2 = generica1.valor2;
+                response.Add(generica);
+            }
             return response;
         }
 
@@ -159,11 +278,122 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
+        public async Task<IEnumerable<Generica>> InsertDetalleForecastPro(DatosExtra foreCast, string json)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarDetalleForecastTablePro", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdForeCast", foreCast.IdForeCast));
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", foreCast.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", foreCast.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> ValidarRelacionDeMedios(DatosExtra foreCast, string json)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("ValidarRelacionesMedio", sql))
+                {
+                    cmd.CommandTimeout = 60 * 5;
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdForeCast", foreCast.IdForeCast));
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", foreCast.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", foreCast.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> ValidarRelacionDeMapaPauta(DatosExtra foreCast, string json)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("ValidarRelacionDeMapaPauta", sql))
+                {
+                    cmd.CommandTimeout = 60 * 5;
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdForeCast", foreCast.IdForeCast));
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", foreCast.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", foreCast.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> InsertDetalleContratoPro(CargarArchivo cargarArchivo, string Json)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarDetalleContratoPro", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdForeCast", cargarArchivo.IdForeCast));
+                    cmd.Parameters.Add(new SqlParameter("@IdContrato", cargarArchivo.IdContrato));
+                    cmd.Parameters.Add(new SqlParameter("@Json", Json));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", cargarArchivo.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", cargarArchivo.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
         public async Task<IEnumerable<Generica>> CargaArchivoImagen(CargarArchivo cargar)
         {
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "GUARDAR IMAGEN");
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "GUARDAR IMAGEN",0);
             string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
             string rutaFinal = "";
             var response2 = new List<Generica>();
@@ -372,6 +602,31 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
+        public async Task<IEnumerable<ContratoExterior>> GetByMostrarContratoExterior(string Medio, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarContratoExterior", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@Medio", Medio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ContratoExterior>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToContratoExterior(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
         public async Task<IEnumerable<ComisionVendedor>> GetByMostrarComisionVendedor(Int64 IdContrato, decimal ValorBruto, decimal ValorNeto,DateTime AnioProceso, Int32 Tipo)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
@@ -410,6 +665,58 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
                     cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
                     cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<FacturaContrato>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToFacturaContrato(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<CargarFactura>> GetByMostrarFacturaNotaCreditoLista(Int64 IdMedio, string IdContrato, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarFacturaNotaCredito", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdContrato", IdContrato));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<CargarFactura>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToListaFacturas(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<FacturaContrato>> GetByMostrarFacturaNotaCreditoSeleccionada(Int64 IdMedio, string IdContrato, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarFacturaNotaCredito", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdContrato", IdContrato));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<FacturaContrato>();
                     await sql.OpenAsync();
@@ -485,6 +792,98 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 }
             }
         }
+
+        public string DevolverArchivoBase64Factura(string rutaDocumentoResul)
+        {
+
+            string StringBase64 = "";
+            try
+            {
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    StringBase64 = Convert.ToBase64String(archivoBytes);
+                }
+            }
+            catch (Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString(), "Log", "Detalle", 1);
+            }
+
+            return StringBase64;
+        }
+
+        public string DevolverArchivoBase64(string rutaDocumentoResul)
+        {
+
+            string StringBase64 = "";
+            try
+            {
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    StringBase64 = Convert.ToBase64String(archivoBytes);
+                }
+            }
+            catch (Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString(), "Log", "Detalle", 1);
+            }
+
+            return StringBase64;
+        }
+
+        public string DevolverArchivoPDFBase64(string rutaDocumentoResul)
+        {
+            string StringBase64 = "";
+            try
+            {
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    string str11 = ".pdf";
+                    string nameArchivo = Path.GetFileName(rutaDocumentoResul);
+                    string rutaDocumento = rutaDocumentoResul.Replace(nameArchivo, "");
+                    string QuitarExtArchivo = nameArchivo.Replace(".xml", "");
+                    string RutaFinal = rutaDocumento + QuitarExtArchivo + str11;
+
+                    byte[] archivoBytes = System.IO.File.ReadAllBytes(RutaFinal);
+                    StringBase64 = Convert.ToBase64String(archivoBytes);
+                }
+            }
+            catch (Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString(), "Log", "Detalle", 1);
+            }
+
+            return StringBase64;
+        }
+
+        #region VerErrores
+        public void VerErrores(string valor, string Carpeta, string rucEmpresa, int tipo)
+        {
+            try
+            {
+                if (tipo == 1)
+                {
+                    string fecha;
+                    fecha = DateTime.Now.ToString("dd-MM-yyyy");//DateTime.Now.ToShortDateString().Replace("/", "-");
+                    if (!Directory.Exists(@"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha))
+                    {
+                        Directory.CreateDirectory(@"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha);
+                    }
+
+                    string path = @"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha + "\\log.txt";
+                    TextWriter tw = new StreamWriter(path, true);
+                    tw.WriteLine("A fecha de : " + DateTime.Now.ToString() + ": " + valor);
+                    tw.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                // System.Diagnostics.EventLog.WriteEntry("Application", "Exception: " + ex.Message);
+            }
+        }
+        #endregion
 
         public async Task<IEnumerable<ForeAprobadas>> GetByMostrarForeCastAprobadas(Int64 IdForeCast, Int64 IdContrato, Int64 IdEmpleado, string Perfil2, Int32 Tipo)
         {
@@ -566,7 +965,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
-        public async Task<IEnumerable<DetalleContratoExcel>> GetByMostrarDetalleContratoExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo)
+        public async Task<IEnumerable<DetalleContratoExcel>> GetByMostrarDetalleContratoExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo, Int32 TipoProceso)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -587,14 +986,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         }
                     }
                     var response2 = await GetByMostrarContratoReporte(IdForeCast, IdContrato, 5);
-                    GenerarReporte(response, response2, IdContrato,"CONTRATO");
+                    GenerarReporte(response, response2, IdContrato,"CONTRATO", TipoProceso);
 
                     return response;
                 }
             }
         }
 
-        public async Task<IEnumerable<DetalleContratoExcel>> GetByMostrarDetallePautaExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo)
+        public async Task<IEnumerable<DetalleContratoExcel>> GetByMostrarDetallePautaExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo, Int32 TipoProceso)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -615,7 +1014,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         }
                     }
                     var response2 = await GetByMostrarContratoReporte(IdForeCast, IdContrato, 8);
-                    GenerarReportePauta(response, response2, IdForeCast, "PAUTA");
+                    GenerarReportePauta(response, response2, IdForeCast, "PAUTA", TipoProceso);
 
                     return response;
                 }
@@ -677,11 +1076,73 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
             return response2;
         }
-        public async Task<IEnumerable<Generica>> InsertPagoContrato(string json,string jsonFinal, string Descripcion, int Estado, int Tipo, string FechaEmision)
+        public async Task<IEnumerable<Generica>> InsertPagoContrato(string json,string jsonFinal, string Descripcion, int Estado, int Tipo, string FechaEmision, string FechaMesContrato,int IdIva)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
                 using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarPagoContrato", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@jsonFinal", jsonFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Descripcion", Descripcion));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", Estado));
+                    cmd.Parameters.Add(new SqlParameter("@FechaEmision", FechaEmision));
+                    cmd.Parameters.Add(new SqlParameter("@FechaMesContrato", FechaMesContrato));
+                    cmd.Parameters.Add(new SqlParameter("@IdIva", IdIva));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> InsertNotaDeCredito(string json, string jsonFinal, string Descripcion, int Estado, int Tipo,int IdActivar, string FechaEmision, int IdIva)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarNotaDeCredito", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@jsonFinal", jsonFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Descripcion", Descripcion));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", Estado));
+                    cmd.Parameters.Add(new SqlParameter("@FechaEmision", FechaEmision));
+                    cmd.Parameters.Add(new SqlParameter("@IdActivar", IdActivar));
+                    cmd.Parameters.Add(new SqlParameter("@IdIva", IdIva));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> InsertFacturaServicio(string json, string jsonFinal, string Descripcion, int Estado, int Tipo, string FechaEmision)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarFacturaServicio", sql))
                 {
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@json", json));
@@ -706,7 +1167,39 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
-        public async Task<IEnumerable<Generica>> InsertCobroContrato(string json, string jsonFinal, string Descripcion,string TipoTransaccion,decimal ValorProceso, int Estado, int Tipo)
+        public async Task<IEnumerable<Generica>> InsertLiquidacion(string json, string jsonFinal,string jsonReembolso,string jsonAsiento, string Descripcion, int Estado, int Tipo, string FechaEmision)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarLiquidacion", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@json", json));
+                    cmd.Parameters.Add(new SqlParameter("@jsonFinal", jsonFinal));
+                    cmd.Parameters.Add(new SqlParameter("@jsonReembolso", jsonReembolso));
+                    cmd.Parameters.Add(new SqlParameter("@jsonAsiento", jsonAsiento));
+                    cmd.Parameters.Add(new SqlParameter("@Descripcion", Descripcion));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", Estado));
+                    cmd.Parameters.Add(new SqlParameter("@FechaEmision", FechaEmision));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<Generica>> InsertCobroContrato(string json, string jsonFinal, string Descripcion,string TipoTransaccion,decimal ValorProceso, int Estado, int Tipo,string NumDocumento)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -718,6 +1211,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     cmd.Parameters.Add(new SqlParameter("@Descripcion", Descripcion));
                     cmd.Parameters.Add(new SqlParameter("@TipoTransaccion", TipoTransaccion));
                     cmd.Parameters.Add(new SqlParameter("@ValorProceso", ValorProceso));
+                    cmd.Parameters.Add(new SqlParameter("@NumDocumento", NumDocumento));
                     cmd.Parameters.Add(new SqlParameter("@Estado", Estado));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     await sql.OpenAsync();
@@ -783,6 +1277,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 TotalSegundos = (decimal)reader["TotalSegundos"],
                 ValorNegocio = (decimal)reader["ValorNegocio"],
                 Descripcion = reader["Descripcion"].ToString(),
+                Detalle = reader["Detalle"].ToString(),
             };
 
 
@@ -809,12 +1304,13 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         {
             DetalleContratoExcel detalleContratoExcel = new DetalleContratoExcel();
 
-            if (reader.FieldCount == 45)
+            if (reader.FieldCount == 46)
             {
 
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
                 detalleContratoExcel.Programa = reader["Programa"].ToString();
                 detalleContratoExcel.Detalle = reader["Detalle"].ToString();
+                detalleContratoExcel.Versiones = reader["Versiones"].ToString();
                 detalleContratoExcel.Duracion = reader["Duracion"].ToString();
                 detalleContratoExcel.Derecho = reader["Derecho"].ToString();
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
@@ -861,12 +1357,13 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 detalleContratoExcel.data_31 = reader["data_31"].ToString();
                 detalleContratoExcel.Impacto = reader["Impacto"].ToString();
             }
-            else if (reader.FieldCount == 44)
+            else if (reader.FieldCount == 45)
             {
 
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
                 detalleContratoExcel.Programa = reader["Programa"].ToString();
                 detalleContratoExcel.Detalle = reader["Detalle"].ToString();
+                detalleContratoExcel.Versiones = reader["Versiones"].ToString();
                 detalleContratoExcel.Duracion = reader["Duracion"].ToString();
                 detalleContratoExcel.Derecho = reader["Derecho"].ToString();
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
@@ -913,12 +1410,13 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 detalleContratoExcel.Impacto = reader["Impacto"].ToString();
 
             }
-            else if (reader.FieldCount == 43)
+            else if (reader.FieldCount == 44)
             {
 
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
                 detalleContratoExcel.Programa = reader["Programa"].ToString();
                 detalleContratoExcel.Detalle = reader["Detalle"].ToString();
+                detalleContratoExcel.Versiones = reader["Versiones"].ToString();
                 detalleContratoExcel.Duracion = reader["Duracion"].ToString();
                 detalleContratoExcel.Derecho = reader["Derecho"].ToString();
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
@@ -964,12 +1462,13 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 detalleContratoExcel.Impacto = reader["Impacto"].ToString();
 
             }
-            else if (reader.FieldCount == 42)
+            else if (reader.FieldCount == 43)
             {
 
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
                 detalleContratoExcel.Programa = reader["Programa"].ToString();
                 detalleContratoExcel.Detalle = reader["Detalle"].ToString();
+                detalleContratoExcel.Versiones = reader["Versiones"].ToString();
                 detalleContratoExcel.Duracion = reader["Duracion"].ToString();
                 detalleContratoExcel.Derecho = reader["Derecho"].ToString();
                 detalleContratoExcel.Canal = reader["Canal"].ToString();
@@ -1080,6 +1579,19 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             };
         }
 
+        private ContratoExterior MapToContratoExterior(SqlDataReader reader)
+        {
+            return new ContratoExterior()
+            {
+                NumContrato = reader["NumContrato"].ToString(),             
+                NombreProyecto = reader["NombreProyecto"].ToString(),
+                FechaRegistro = (DateTime)reader["FechaRegistro"],
+                Anunciante = reader["Anunciante"].ToString(),
+                Email = reader["Email"].ToString(),
+            };
+        }
+
+
         private ComisionVendedor MapToComisionVendedo(SqlDataReader reader)
         {
             return new ComisionVendedor()
@@ -1105,6 +1617,20 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Mes = reader["Mes"].ToString(),
                 Anio = (Int32)reader["Anio"],
                 NumOrden = reader["NumOrden"].ToString(),
+            };
+        }
+
+        private CargarFactura MapToListaFacturas(SqlDataReader reader)
+        {
+            return new CargarFactura()
+            {
+                ValorBruto = (decimal)reader["ValorBruto"],
+                ValorNeto = (decimal)reader["ValorNeto"],
+                ValorCobrar = (decimal)reader["ValorCobrar"],
+                Iva = (decimal)reader["Iva"],
+                Total = (decimal)reader["Total"],
+                NumDocumento = reader["NumDocumento"].ToString(),
+                IdContrato = reader["IdContrato"].ToString(),
             };
         }
         private FacturaContrato MapToFacturaPorCobrar(SqlDataReader reader)
@@ -1168,6 +1694,11 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 ValorRenta = (decimal)reader["ValorRenta"],
                 ValorIva = (decimal)reader["ValorIva"],
                 Iva = (decimal)reader["Iva"],
+                RutaRetencion = DevolverArchivoBase64(reader["RutaRetencion"].ToString()),
+                RutaRetencionPDF = DevolverArchivoPDFBase64(reader["RutaRetencion"].ToString()),
+                RutaFacturaXML = DevolverArchivoBase64Factura(reader["RutaFacturaXML"].ToString()),
+                RutaFacturaPDF = DevolverArchivoBase64Factura(reader["RutaFacturaPDF"].ToString()),
+                NumRetencion = reader["NumRetencion"].ToString(),
             };
         }
 
@@ -1187,6 +1718,10 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 FechaInicioPauta = (DateTime)reader["FechaInicioPauta"],
                 FechaFinalPauta = (DateTime)reader["FechaFinalPauta"],
                 NumContrato = reader["NumContrato"].ToString(),
+                Estado = (Int32)reader["Estado"],
+                TotalNegocio = (decimal)reader["TotalNegocio"],
+                TotalSegundos = (decimal)reader["TotalSegundos"],
+                RucVendedor = reader["RucVendedor"].ToString(),
             };
         }
         private Cobros MapToCobros(SqlDataReader reader)
@@ -1212,7 +1747,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 valor2 = reader["valor2"].ToString()
             };
         }
-        private string GenerarReporte(List<DetalleContratoExcel> detalles, IEnumerable<ContratoReporte> reportes, Int64 IdContrato, string TipoDocumento)
+        private string GenerarReporte(List<DetalleContratoExcel> detalles, IEnumerable<ContratoReporte> reportes, Int64 IdContrato, string TipoDocumento, Int32 TipoProceso)
         {
             string Ruta = "";
             string fecha;
@@ -1221,7 +1756,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(IdContrato, 0, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(IdContrato, 0, TipoDocumento, TipoProceso);
             string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;// "F:\\PropuestaConexion\\MESES.xlsx";
             string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;// "F:\\PropuestaConexion\\MESES_" + fecha + ".xlsx";
             using var wbook = new XLWorkbook(rutaDocumento);
@@ -1251,15 +1786,29 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                 DateTime fechaActual = DateTime.Now;
                 string mes1 = s.FechaInicio.ToString("MMMM");
-                ws.Cell("P13").Value = mes1.ToUpper();
-                ws.Cell("P13").Style.Font.Bold = true;
+                ws.Cell("Q13").Value = mes1.ToUpper();
+                ws.Cell("Q13").Style.Font.Bold = true;
 
                 int valorPor = Convert.ToInt32(s.ComiAgen);
 
                 //ws.Cell("M286").Value = valorPor;
                 //ws.Cell("M286").Style.Font.Bold = true;
-                ws.Cell("M" + ValorPorcentaje.ToString()).Value = valorPor;
-                ws.Cell("M" + ValorPorcentaje.ToString()).Style.Font.Bold = true;
+                ws.Cell("N" + ValorPorcentaje.ToString()).Value = valorPor; //ANTES M
+                ws.Cell("N" + ValorPorcentaje.ToString()).Style.Font.Bold = true; //ANTES M
+                int ivaValor = 0;
+                int ivaValor2 = 0;
+                ivaValor = ValorPorcentaje + 2;
+                ivaValor2 = ValorPorcentaje + 1;
+
+                DateTime fechaIva = Convert.ToDateTime("2024-03-31");
+                if (DateTime.Compare(fechaIva, s.FechaInicio) < 0)
+                {
+                    ws.Cell("N" + ivaValor.ToString()).Value = "(+)  15% IVA"; //ANTES M
+                    ws.Cell("N" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES M
+
+                    ws.Cell("P" + ivaValor.ToString()).FormulaA1 = "=P" + ivaValor2.ToString() + "*" + "15%"; //ANTES O
+                    ws.Cell("P" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES O
+                }
 
                 NumContrato = s.NumContrato;
 
@@ -1272,70 +1821,107 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     ws.Cell("B" + cont.ToString()).Value = s.Canal;
                     ws.Cell("C" + cont.ToString()).Value = s.Programa;
                     ws.Cell("D" + cont.ToString()).Value = s.Detalle;
-                    ws.Cell("E" + cont.ToString()).Value = s.Derecho;
-                    ws.Cell("F" + cont.ToString()).Value = s.Duracion;
-                    ws.Cell("G" + cont.ToString()).Value = s.Franja;
+                    ws.Cell("E" + cont.ToString()).Value = s.Versiones;
+                    ws.Cell("F" + cont.ToString()).Value = s.Derecho;
+                    ws.Cell("G" + cont.ToString()).Value = s.Duracion;//--F ANTES
+                    ws.Cell("H" + cont.ToString()).Value = s.Franja;
 
-                    ws.Cell("H" + cont.ToString()).Value = s.Tarifa;
-                    ws.Cell("I" + cont.ToString()).Value = s.Valor1;
-                    ws.Cell("J" + cont.ToString()).Value = s.Valor2;
-                    ws.Cell("K" + cont.ToString()).Value = s.Valor3;
-                    ws.Cell("L" + cont.ToString()).Value = s.Valor4;
-                    ws.Cell("N" + cont.ToString()).FormulaA1 = "=F" + cont.ToString() + "*" + "AU" + cont.ToString();
-                    ws.Cell("O" + cont.ToString()).FormulaA1 = "=N" + cont.ToString() + "*" + "H" + cont.ToString();
+                    ws.Cell("I" + cont.ToString()).Value = s.Tarifa;//--H ANTES
+                    ws.Cell("J" + cont.ToString()).Value = s.Valor1;
+                    ws.Cell("K" + cont.ToString()).Value = s.Valor2;
+                    ws.Cell("L" + cont.ToString()).Value = s.Valor3;
+                    ws.Cell("M" + cont.ToString()).Value = s.Valor4;
+                    ws.Cell("O" + cont.ToString()).FormulaA1 = "=G" + cont.ToString() + "*" + "AV" + cont.ToString(); //--N ANTES
+                    ws.Cell("P" + cont.ToString()).FormulaA1 = "=O" + cont.ToString() + "*" + "I" + cont.ToString(); //--O ANTES
                     cont++;
                 }
             }
             int countFinal = cont + 2;
             int countFinall = cont + 3;
-            ws.Cell("N" + countFinall.ToString()).FormulaA1 = "=SUM(N16:N" + countFinal.ToString() + ")";
-            ws.Cell("O" + countFinall.ToString()).FormulaA1 = "=SUM(O16:O" + countFinal.ToString() + ")";
+            ws.Cell("O" + countFinall.ToString()).FormulaA1 = "=SUM(O16:O" + countFinal.ToString() + ")"; //--N ANTES
+            ws.Cell("P" + countFinall.ToString()).FormulaA1 = "=SUM(P16:P" + countFinal.ToString() + ")"; //--O ANTES
 
             foreach (DetalleContratoExcel s in detalles)
             {
-                ws.Cell("P" + cont2.ToString()).Value = s.data_1;
-                ws.Cell("Q" + cont2.ToString()).Value = s.data_2;
-                ws.Cell("R" + cont2.ToString()).Value = s.data_3;
-                ws.Cell("S" + cont2.ToString()).Value = s.data_4;
-                ws.Cell("T" + cont2.ToString()).Value = s.data_5;
-                ws.Cell("U" + cont2.ToString()).Value = s.data_6;
-                ws.Cell("V" + cont2.ToString()).Value = s.data_7;
-                ws.Cell("W" + cont2.ToString()).Value = s.data_8;
-                ws.Cell("X" + cont2.ToString()).Value = s.data_9;
-                ws.Cell("Y" + cont2.ToString()).Value = s.data_10;
-                ws.Cell("Z" + cont2.ToString()).Value = s.data_11;
-                ws.Cell("AA" + cont2.ToString()).Value = s.data_12;
-                ws.Cell("AB" + cont2.ToString()).Value = s.data_13;
-                ws.Cell("AC" + cont2.ToString()).Value = s.data_14;
-                ws.Cell("AD" + cont2.ToString()).Value = s.data_15;
-                ws.Cell("AE" + cont2.ToString()).Value = s.data_16;
-                ws.Cell("AF" + cont2.ToString()).Value = s.data_17;
-                ws.Cell("AG" + cont2.ToString()).Value = s.data_18;
-                ws.Cell("AH" + cont2.ToString()).Value = s.data_19;
-                ws.Cell("AI" + cont2.ToString()).Value = s.data_20;
-                ws.Cell("AJ" + cont2.ToString()).Value = s.data_21;
-                ws.Cell("AK" + cont2.ToString()).Value = s.data_22;
-                ws.Cell("AL" + cont2.ToString()).Value = s.data_23;
-                ws.Cell("AM" + cont2.ToString()).Value = s.data_24;
-                ws.Cell("AN" + cont2.ToString()).Value = s.data_25;
-                ws.Cell("AO" + cont2.ToString()).Value = s.data_26;
-                ws.Cell("AP" + cont2.ToString()).Value = s.data_27;
-                ws.Cell("AQ" + cont2.ToString()).Value = s.data_28;
-                ws.Cell("AR" + cont2.ToString()).Value = s.data_29;
-                ws.Cell("AS" + cont2.ToString()).Value = s.data_30;
-                ws.Cell("AT" + cont2.ToString()).Value = s.data_31;
-                ws.Cell("AU" + cont2.ToString()).FormulaA1 = "=SUM(P" + cont2.ToString() + ":AT" + cont2.ToString() + ")";
+                ws.Cell("Q" + cont2.ToString()).Value = s.data_1; //ANTES P
+                ws.Cell("R" + cont2.ToString()).Value = s.data_2;
+                ws.Cell("S" + cont2.ToString()).Value = s.data_3;
+                ws.Cell("T" + cont2.ToString()).Value = s.data_4;
+                ws.Cell("U" + cont2.ToString()).Value = s.data_5;
+                ws.Cell("V" + cont2.ToString()).Value = s.data_6;
+                ws.Cell("W" + cont2.ToString()).Value = s.data_7;
+                ws.Cell("X" + cont2.ToString()).Value = s.data_8;
+                ws.Cell("Y" + cont2.ToString()).Value = s.data_9;
+                ws.Cell("Z" + cont2.ToString()).Value = s.data_10;
+                ws.Cell("AA" + cont2.ToString()).Value = s.data_11;
+                ws.Cell("AB" + cont2.ToString()).Value = s.data_12;
+                ws.Cell("AC" + cont2.ToString()).Value = s.data_13;
+                ws.Cell("AD" + cont2.ToString()).Value = s.data_14;
+                ws.Cell("AE" + cont2.ToString()).Value = s.data_15;
+                ws.Cell("AF" + cont2.ToString()).Value = s.data_16;
+                ws.Cell("AG" + cont2.ToString()).Value = s.data_17;
+                ws.Cell("AH" + cont2.ToString()).Value = s.data_18;
+                ws.Cell("AI" + cont2.ToString()).Value = s.data_19;
+                ws.Cell("AJ" + cont2.ToString()).Value = s.data_20;
+                ws.Cell("AK" + cont2.ToString()).Value = s.data_21;
+                ws.Cell("AL" + cont2.ToString()).Value = s.data_22;
+                ws.Cell("AM" + cont2.ToString()).Value = s.data_23;
+                ws.Cell("AN" + cont2.ToString()).Value = s.data_24;
+                ws.Cell("AO" + cont2.ToString()).Value = s.data_25;
+                ws.Cell("AP" + cont2.ToString()).Value = s.data_26;
+                ws.Cell("AQ" + cont2.ToString()).Value = s.data_27;
+                ws.Cell("AR" + cont2.ToString()).Value = s.data_28;
+                ws.Cell("AS" + cont2.ToString()).Value = s.data_29;
+                ws.Cell("AT" + cont2.ToString()).Value = s.data_30;
+                ws.Cell("AU" + cont2.ToString()).Value = s.data_31;  //--AT ANTES
+                ws.Cell("AV" + cont2.ToString()).FormulaA1 = "=SUM(Q" + cont2.ToString() + ":AU" + cont2.ToString() + ")";
                 cont2++;
             }
 
 
             int countFinal2 = cont2 + 2;
             int countFinall2 = cont2 + 3;
+            ws.Cell("Q" + countFinall2.ToString()).FormulaA1 = "SUM(Q16:Q" + countFinal2.ToString() + ")";
+            ws.Cell("R" + countFinall2.ToString()).FormulaA1 = "SUM(R16:R" + countFinal2.ToString() + ")";
+            ws.Cell("S" + countFinall2.ToString()).FormulaA1 = "SUM(S16:S" + countFinal2.ToString() + ")";
+            ws.Cell("T" + countFinall2.ToString()).FormulaA1 = "SUM(T16:T" + countFinal2.ToString() + ")";
+            ws.Cell("U" + countFinall2.ToString()).FormulaA1 = "SUM(U16:U" + countFinal2.ToString() + ")";
+            ws.Cell("V" + countFinall2.ToString()).FormulaA1 = "SUM(V16:V" + countFinal2.ToString() + ")";
+            ws.Cell("W" + countFinall2.ToString()).FormulaA1 = "SUM(W16:W" + countFinal2.ToString() + ")";
+            ws.Cell("X" + countFinall2.ToString()).FormulaA1 = "SUM(X16:X" + countFinal2.ToString() + ")";
+            ws.Cell("Y" + countFinall2.ToString()).FormulaA1 = "SUM(Y16:Y" + countFinal2.ToString() + ")";
+            ws.Cell("Z" + countFinall2.ToString()).FormulaA1 = "SUM(Z16:Z" + countFinal2.ToString() + ")";
+            ws.Cell("AA" + countFinall2.ToString()).FormulaA1 = "SUM(AA16:AA" + countFinal2.ToString() + ")";
+            ws.Cell("AB" + countFinall2.ToString()).FormulaA1 = "SUM(AB16:AB" + countFinal2.ToString() + ")";
+            ws.Cell("AC" + countFinall2.ToString()).FormulaA1 = "SUM(AC16:AC" + countFinal2.ToString() + ")";
+            ws.Cell("AD" + countFinall2.ToString()).FormulaA1 = "SUM(AD16:AD" + countFinal2.ToString() + ")";
+            ws.Cell("AE" + countFinall2.ToString()).FormulaA1 = "SUM(AE16:AE" + countFinal2.ToString() + ")";
+            ws.Cell("AF" + countFinall2.ToString()).FormulaA1 = "SUM(AF16:AF" + countFinal2.ToString() + ")";
+            ws.Cell("AG" + countFinall2.ToString()).FormulaA1 = "SUM(AG16:AG" + countFinal2.ToString() + ")";
+            ws.Cell("AH" + countFinall2.ToString()).FormulaA1 = "SUM(AH16:AH" + countFinal2.ToString() + ")";
+            ws.Cell("AI" + countFinall2.ToString()).FormulaA1 = "SUM(AI16:AI" + countFinal2.ToString() + ")";
+            ws.Cell("AJ" + countFinall2.ToString()).FormulaA1 = "SUM(AJ16:AJ" + countFinal2.ToString() + ")";
+            ws.Cell("AK" + countFinall2.ToString()).FormulaA1 = "SUM(AK16:AK" + countFinal2.ToString() + ")";
+            ws.Cell("AL" + countFinall2.ToString()).FormulaA1 = "SUM(AL16:AL" + countFinal2.ToString() + ")";
+            ws.Cell("AM" + countFinall2.ToString()).FormulaA1 = "SUM(AM16:AM" + countFinal2.ToString() + ")";
+            ws.Cell("AN" + countFinall2.ToString()).FormulaA1 = "SUM(AN16:AN" + countFinal2.ToString() + ")";
+            ws.Cell("AO" + countFinall2.ToString()).FormulaA1 = "SUM(AO16:AO" + countFinal2.ToString() + ")";
+            ws.Cell("AP" + countFinall2.ToString()).FormulaA1 = "SUM(AP16:AP" + countFinal2.ToString() + ")";
+            ws.Cell("AQ" + countFinall2.ToString()).FormulaA1 = "SUM(AQ16:AQ" + countFinal2.ToString() + ")";
+            ws.Cell("AR" + countFinall2.ToString()).FormulaA1 = "SUM(AR16:AR" + countFinal2.ToString() + ")";
+            ws.Cell("AS" + countFinall2.ToString()).FormulaA1 = "SUM(AS16:AS" + countFinal2.ToString() + ")";
+            ws.Cell("AT" + countFinall2.ToString()).FormulaA1 = "SUM(AT16:AT" + countFinal2.ToString() + ")";
             ws.Cell("AU" + countFinall2.ToString()).FormulaA1 = "SUM(AU16:AU" + countFinal2.ToString() + ")";
+            ws.Cell("AV" + countFinall2.ToString()).FormulaA1 = "SUM(AV16:AV" + countFinal2.ToString() + ")";
 
-            wbook.SaveAs(rutaDocumentoResul);
-
-            byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+            //wbook.SaveAs(rutaDocumentoResul);
+            //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+            byte[] archivoBytes = null;
+            using (var msA = new MemoryStream())
+            {
+                wbook.SaveAs(msA);
+                archivoBytes = msA.ToArray();
+            }
             string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
             CargarArchivoBase64 cargar = new CargarArchivoBase64();
@@ -1352,7 +1938,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             return Ruta;
         }
 
-        private string GenerarReportePauta(List<DetalleContratoExcel> detalles, IEnumerable<ContratoReporte> reportes, Int64 IdContrato, string TipoDocumento)
+        private string GenerarReportePauta(List<DetalleContratoExcel> detalles, IEnumerable<ContratoReporte> reportes, Int64 IdContrato, string TipoDocumento, Int32 TipoProceso)
         {
             string Ruta = "";
             string fecha;
@@ -1361,7 +1947,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, IdContrato, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, IdContrato, TipoDocumento, TipoProceso);
             string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;// "F:\\PropuestaConexion\\MESES.xlsx";
             string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;// "F:\\PropuestaConexion\\MESES_" + fecha + ".xlsx";
             using var wbook = new XLWorkbook(rutaDocumento);
@@ -1372,6 +1958,105 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             DateTime dateTime = DateTime.Now;
             var ws = wbook.Worksheet(1);
             ws.Row(16).InsertRowsBelow(numeroRegistro);
+            #region NO BORRAR
+            //foreach (ContratoReporte s in reportes)
+            //{
+            //    ws.Cell("C6").Value = s.NumContrato;
+            //    ws.Cell("C6").Style.Font.Bold = true;
+
+            //    ws.Cell("C7").Value = s.Anunciante;
+            //    ws.Cell("C7").Style.Font.Bold = true;
+
+            //    ws.Cell("C8").Value = s.Agencia;
+            //    ws.Cell("C8").Style.Font.Bold = true;
+
+            //    ws.Cell("C9").Value = s.FechaInicio.ToString("yyyy-MM-dd") + " - " + s.FechaFinal.ToString("yyyy-MM-dd");
+            //    ws.Cell("C9").Style.Font.Bold = true;
+
+            //    ws.Cell("C10").Value = dateTime.ToString("yyyy-MM-dd");
+            //    ws.Cell("C10").Style.Font.Bold = true;
+
+            //    DateTime fechaActual = DateTime.Now;
+            //    string mes1 = s.FechaInicio.ToString("MMMM");
+            //    ws.Cell("P13").Value = mes1.ToUpper();
+            //    ws.Cell("P13").Style.Font.Bold = true;
+
+            //    int valorPor = Convert.ToInt32(s.ComiAgen);
+
+            //    ws.Cell("M"+ ValorPorcentaje.ToString()).Value = valorPor;
+            //    ws.Cell("M" + ValorPorcentaje.ToString()).Style.Font.Bold = true;
+
+            //    NumContrato = s.NumContrato;
+
+            //}
+
+            //foreach (DetalleContratoExcel s in detalles)
+            //{
+            //    if (s.Programa != "" && s.Programa != "PROGRAMA")
+            //    {
+            //        ws.Cell("B" + cont.ToString()).Value = s.Canal;
+            //        ws.Cell("C" + cont.ToString()).Value = s.Programa;
+            //        ws.Cell("D" + cont.ToString()).Value = s.Detalle;
+            //        ws.Cell("E" + cont.ToString()).Value = s.Derecho;
+            //        ws.Cell("F" + cont.ToString()).Value = s.Duracion;
+            //        ws.Cell("G" + cont.ToString()).Value = s.Franja;
+
+            //        ws.Cell("H" + cont.ToString()).Value = s.Tarifa;
+            //        ws.Cell("I" + cont.ToString()).Value = s.Valor1;
+            //        ws.Cell("J" + cont.ToString()).Value = s.Valor2;
+            //        ws.Cell("K" + cont.ToString()).Value = s.Valor3;
+            //        ws.Cell("L" + cont.ToString()).Value = s.Valor4;
+            //        ws.Cell("N" + cont.ToString()).FormulaA1 = "=F"+ cont.ToString() + "*"+ "AU"+ cont.ToString();
+            //        ws.Cell("O" + cont.ToString()).FormulaA1 = "=N" + cont.ToString() + "*" + "H" + cont.ToString();
+            //        cont++;
+            //    }
+            //}
+            //int countFinal = cont + 2;
+            //int countFinall = cont + 3;
+            //ws.Cell("N" + countFinall.ToString()).FormulaA1 = "=SUM(N16:N"+ countFinal.ToString() + ")";
+            //ws.Cell("O" + countFinall.ToString()).FormulaA1 = "=SUM(O16:O"+ countFinal.ToString() + ")";
+
+            //foreach (DetalleContratoExcel s in detalles)
+            //{
+            //    ws.Cell("P" + cont2.ToString()).Value = s.data_1;
+            //    ws.Cell("Q" + cont2.ToString()).Value = s.data_2;
+            //    ws.Cell("R" + cont2.ToString()).Value = s.data_3;
+            //    ws.Cell("S" + cont2.ToString()).Value = s.data_4;
+            //    ws.Cell("T" + cont2.ToString()).Value = s.data_5;
+            //    ws.Cell("U" + cont2.ToString()).Value = s.data_6;
+            //    ws.Cell("V" + cont2.ToString()).Value = s.data_7;
+            //    ws.Cell("W" + cont2.ToString()).Value = s.data_8;
+            //    ws.Cell("X" + cont2.ToString()).Value = s.data_9;
+            //    ws.Cell("Y" + cont2.ToString()).Value = s.data_10;
+            //    ws.Cell("Z" + cont2.ToString()).Value = s.data_11;
+            //    ws.Cell("AA" + cont2.ToString()).Value = s.data_12;
+            //    ws.Cell("AB" + cont2.ToString()).Value = s.data_13;
+            //    ws.Cell("AC" + cont2.ToString()).Value = s.data_14;
+            //    ws.Cell("AD" + cont2.ToString()).Value = s.data_15;
+            //    ws.Cell("AE" + cont2.ToString()).Value = s.data_16;
+            //    ws.Cell("AF" + cont2.ToString()).Value = s.data_17;
+            //    ws.Cell("AG" + cont2.ToString()).Value = s.data_18;
+            //    ws.Cell("AH" + cont2.ToString()).Value = s.data_19;
+            //    ws.Cell("AI" + cont2.ToString()).Value = s.data_20;
+            //    ws.Cell("AJ" + cont2.ToString()).Value = s.data_21;
+            //    ws.Cell("AK" + cont2.ToString()).Value = s.data_22;
+            //    ws.Cell("AL" + cont2.ToString()).Value = s.data_23;
+            //    ws.Cell("AM" + cont2.ToString()).Value = s.data_24;
+            //    ws.Cell("AN" + cont2.ToString()).Value = s.data_25;
+            //    ws.Cell("AO" + cont2.ToString()).Value = s.data_26;
+            //    ws.Cell("AP" + cont2.ToString()).Value = s.data_27;
+            //    ws.Cell("AQ" + cont2.ToString()).Value = s.data_28;
+            //    ws.Cell("AR" + cont2.ToString()).Value = s.data_29;
+            //    ws.Cell("AS" + cont2.ToString()).Value = s.data_30;
+            //    ws.Cell("AT" + cont2.ToString()).Value = s.data_31;
+            //    ws.Cell("AU" + cont2.ToString()).FormulaA1 = "=SUM(P" + cont2.ToString() + ":AT" + cont2.ToString() + ")"; 
+            //    cont2++;
+            //}
+
+            //int countFinal2 = cont2 + 4;
+            //ws.Cell("N" + cont2.ToString()).FormulaA1 = "SUMA(AU16" + ":AU" + countFinal2.ToString() + ")";
+            #endregion
+
             foreach (ContratoReporte s in reportes)
             {
                 ws.Cell("C6").Value = s.NumContrato;
@@ -1391,13 +2076,29 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                 DateTime fechaActual = DateTime.Now;
                 string mes1 = s.FechaInicio.ToString("MMMM");
-                ws.Cell("P13").Value = mes1.ToUpper();
-                ws.Cell("P13").Style.Font.Bold = true;
+                ws.Cell("Q13").Value = mes1.ToUpper();
+                ws.Cell("Q13").Style.Font.Bold = true;
 
                 int valorPor = Convert.ToInt32(s.ComiAgen);
 
-                ws.Cell("M"+ ValorPorcentaje.ToString()).Value = valorPor;
-                ws.Cell("M" + ValorPorcentaje.ToString()).Style.Font.Bold = true;
+                //ws.Cell("M286").Value = valorPor;
+                //ws.Cell("M286").Style.Font.Bold = true;
+                ws.Cell("N" + ValorPorcentaje.ToString()).Value = valorPor; //ANTES M
+                ws.Cell("N" + ValorPorcentaje.ToString()).Style.Font.Bold = true; //ANTES M
+                int ivaValor = 0;
+                int ivaValor2 = 0;
+                ivaValor = ValorPorcentaje + 2;
+                ivaValor2 = ValorPorcentaje + 1;
+
+                DateTime fechaIva = Convert.ToDateTime("2024-03-31");
+                if (DateTime.Compare(fechaIva, s.FechaInicio) < 0)
+                {
+                    ws.Cell("N" + ivaValor.ToString()).Value = "(+)  15% IVA"; //ANTES M
+                    ws.Cell("N" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES M
+
+                    ws.Cell("P" + ivaValor.ToString()).FormulaA1 = "=P" + ivaValor2.ToString() + "*" + "15%"; //ANTES O
+                    ws.Cell("P" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES O
+                }
 
                 NumContrato = s.NumContrato;
 
@@ -1410,68 +2111,108 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     ws.Cell("B" + cont.ToString()).Value = s.Canal;
                     ws.Cell("C" + cont.ToString()).Value = s.Programa;
                     ws.Cell("D" + cont.ToString()).Value = s.Detalle;
-                    ws.Cell("E" + cont.ToString()).Value = s.Derecho;
-                    ws.Cell("F" + cont.ToString()).Value = s.Duracion;
-                    ws.Cell("G" + cont.ToString()).Value = s.Franja;
+                    ws.Cell("E" + cont.ToString()).Value = s.Versiones;
+                    ws.Cell("F" + cont.ToString()).Value = s.Derecho;
+                    ws.Cell("G" + cont.ToString()).Value = s.Duracion;//--F ANTES
+                    ws.Cell("H" + cont.ToString()).Value = s.Franja;
 
-                    ws.Cell("H" + cont.ToString()).Value = s.Tarifa;
-                    ws.Cell("I" + cont.ToString()).Value = s.Valor1;
-                    ws.Cell("J" + cont.ToString()).Value = s.Valor2;
-                    ws.Cell("K" + cont.ToString()).Value = s.Valor3;
-                    ws.Cell("L" + cont.ToString()).Value = s.Valor4;
-                    ws.Cell("N" + cont.ToString()).FormulaA1 = "=F"+ cont.ToString() + "*"+ "AU"+ cont.ToString();
-                    ws.Cell("O" + cont.ToString()).FormulaA1 = "=N" + cont.ToString() + "*" + "H" + cont.ToString();
+                    ws.Cell("I" + cont.ToString()).Value = s.Tarifa;//--H ANTES
+                    ws.Cell("J" + cont.ToString()).Value = s.Valor1;
+                    ws.Cell("K" + cont.ToString()).Value = s.Valor2;
+                    ws.Cell("L" + cont.ToString()).Value = s.Valor3;
+                    ws.Cell("M" + cont.ToString()).Value = s.Valor4;
+                    ws.Cell("O" + cont.ToString()).FormulaA1 = "=G" + cont.ToString() + "*" + "AV" + cont.ToString(); //--N ANTES
+                    ws.Cell("P" + cont.ToString()).FormulaA1 = "=O" + cont.ToString() + "*" + "I" + cont.ToString(); //--O ANTES
                     cont++;
                 }
             }
             int countFinal = cont + 2;
             int countFinall = cont + 3;
-            ws.Cell("N" + countFinall.ToString()).FormulaA1 = "=SUM(N16:N"+ countFinal.ToString() + ")";
-            ws.Cell("O" + countFinall.ToString()).FormulaA1 = "=SUM(O16:O"+ countFinal.ToString() + ")";
+            ws.Cell("O" + countFinall.ToString()).FormulaA1 = "=SUM(O16:O" + countFinal.ToString() + ")"; //--N ANTES
+            ws.Cell("P" + countFinall.ToString()).FormulaA1 = "=SUM(P16:P" + countFinal.ToString() + ")"; //--O ANTES
 
             foreach (DetalleContratoExcel s in detalles)
             {
-                ws.Cell("P" + cont2.ToString()).Value = s.data_1;
-                ws.Cell("Q" + cont2.ToString()).Value = s.data_2;
-                ws.Cell("R" + cont2.ToString()).Value = s.data_3;
-                ws.Cell("S" + cont2.ToString()).Value = s.data_4;
-                ws.Cell("T" + cont2.ToString()).Value = s.data_5;
-                ws.Cell("U" + cont2.ToString()).Value = s.data_6;
-                ws.Cell("V" + cont2.ToString()).Value = s.data_7;
-                ws.Cell("W" + cont2.ToString()).Value = s.data_8;
-                ws.Cell("X" + cont2.ToString()).Value = s.data_9;
-                ws.Cell("Y" + cont2.ToString()).Value = s.data_10;
-                ws.Cell("Z" + cont2.ToString()).Value = s.data_11;
-                ws.Cell("AA" + cont2.ToString()).Value = s.data_12;
-                ws.Cell("AB" + cont2.ToString()).Value = s.data_13;
-                ws.Cell("AC" + cont2.ToString()).Value = s.data_14;
-                ws.Cell("AD" + cont2.ToString()).Value = s.data_15;
-                ws.Cell("AE" + cont2.ToString()).Value = s.data_16;
-                ws.Cell("AF" + cont2.ToString()).Value = s.data_17;
-                ws.Cell("AG" + cont2.ToString()).Value = s.data_18;
-                ws.Cell("AH" + cont2.ToString()).Value = s.data_19;
-                ws.Cell("AI" + cont2.ToString()).Value = s.data_20;
-                ws.Cell("AJ" + cont2.ToString()).Value = s.data_21;
-                ws.Cell("AK" + cont2.ToString()).Value = s.data_22;
-                ws.Cell("AL" + cont2.ToString()).Value = s.data_23;
-                ws.Cell("AM" + cont2.ToString()).Value = s.data_24;
-                ws.Cell("AN" + cont2.ToString()).Value = s.data_25;
-                ws.Cell("AO" + cont2.ToString()).Value = s.data_26;
-                ws.Cell("AP" + cont2.ToString()).Value = s.data_27;
-                ws.Cell("AQ" + cont2.ToString()).Value = s.data_28;
-                ws.Cell("AR" + cont2.ToString()).Value = s.data_29;
-                ws.Cell("AS" + cont2.ToString()).Value = s.data_30;
-                ws.Cell("AT" + cont2.ToString()).Value = s.data_31;
-                ws.Cell("AU" + cont2.ToString()).FormulaA1 = "=SUM(P" + cont2.ToString() + ":AT" + cont2.ToString() + ")"; 
+                ws.Cell("Q" + cont2.ToString()).Value = s.data_1; //ANTES P
+                ws.Cell("R" + cont2.ToString()).Value = s.data_2;
+                ws.Cell("S" + cont2.ToString()).Value = s.data_3;
+                ws.Cell("T" + cont2.ToString()).Value = s.data_4;
+                ws.Cell("U" + cont2.ToString()).Value = s.data_5;
+                ws.Cell("V" + cont2.ToString()).Value = s.data_6;
+                ws.Cell("W" + cont2.ToString()).Value = s.data_7;
+                ws.Cell("X" + cont2.ToString()).Value = s.data_8;
+                ws.Cell("Y" + cont2.ToString()).Value = s.data_9;
+                ws.Cell("Z" + cont2.ToString()).Value = s.data_10;
+                ws.Cell("AA" + cont2.ToString()).Value = s.data_11;
+                ws.Cell("AB" + cont2.ToString()).Value = s.data_12;
+                ws.Cell("AC" + cont2.ToString()).Value = s.data_13;
+                ws.Cell("AD" + cont2.ToString()).Value = s.data_14;
+                ws.Cell("AE" + cont2.ToString()).Value = s.data_15;
+                ws.Cell("AF" + cont2.ToString()).Value = s.data_16;
+                ws.Cell("AG" + cont2.ToString()).Value = s.data_17;
+                ws.Cell("AH" + cont2.ToString()).Value = s.data_18;
+                ws.Cell("AI" + cont2.ToString()).Value = s.data_19;
+                ws.Cell("AJ" + cont2.ToString()).Value = s.data_20;
+                ws.Cell("AK" + cont2.ToString()).Value = s.data_21;
+                ws.Cell("AL" + cont2.ToString()).Value = s.data_22;
+                ws.Cell("AM" + cont2.ToString()).Value = s.data_23;
+                ws.Cell("AN" + cont2.ToString()).Value = s.data_24;
+                ws.Cell("AO" + cont2.ToString()).Value = s.data_25;
+                ws.Cell("AP" + cont2.ToString()).Value = s.data_26;
+                ws.Cell("AQ" + cont2.ToString()).Value = s.data_27;
+                ws.Cell("AR" + cont2.ToString()).Value = s.data_28;
+                ws.Cell("AS" + cont2.ToString()).Value = s.data_29;
+                ws.Cell("AT" + cont2.ToString()).Value = s.data_30;
+                ws.Cell("AU" + cont2.ToString()).Value = s.data_31;  //--AT ANTES
+                ws.Cell("AV" + cont2.ToString()).FormulaA1 = "=SUM(Q" + cont2.ToString() + ":AU" + cont2.ToString() + ")";
                 cont2++;
             }
 
-            //int countFinal2 = cont2 + 4;
-            //ws.Cell("N" + cont2.ToString()).FormulaA1 = "SUMA(AU16" + ":AU" + countFinal2.ToString() + ")";
 
-            wbook.SaveAs(rutaDocumentoResul);
+            int countFinal2 = cont2 + 2;
+            int countFinall2 = cont2 + 3;
+            ws.Cell("Q" + countFinall2.ToString()).FormulaA1 = "SUM(Q16:Q" + countFinal2.ToString() + ")";
+            ws.Cell("R" + countFinall2.ToString()).FormulaA1 = "SUM(R16:R" + countFinal2.ToString() + ")";
+            ws.Cell("S" + countFinall2.ToString()).FormulaA1 = "SUM(S16:S" + countFinal2.ToString() + ")";
+            ws.Cell("T" + countFinall2.ToString()).FormulaA1 = "SUM(T16:T" + countFinal2.ToString() + ")";
+            ws.Cell("U" + countFinall2.ToString()).FormulaA1 = "SUM(U16:U" + countFinal2.ToString() + ")";
+            ws.Cell("V" + countFinall2.ToString()).FormulaA1 = "SUM(V16:V" + countFinal2.ToString() + ")";
+            ws.Cell("W" + countFinall2.ToString()).FormulaA1 = "SUM(W16:W" + countFinal2.ToString() + ")";
+            ws.Cell("X" + countFinall2.ToString()).FormulaA1 = "SUM(X16:X" + countFinal2.ToString() + ")";
+            ws.Cell("Y" + countFinall2.ToString()).FormulaA1 = "SUM(Y16:Y" + countFinal2.ToString() + ")";
+            ws.Cell("Z" + countFinall2.ToString()).FormulaA1 = "SUM(Z16:Z" + countFinal2.ToString() + ")";
+            ws.Cell("AA" + countFinall2.ToString()).FormulaA1 = "SUM(AA16:AA" + countFinal2.ToString() + ")";
+            ws.Cell("AB" + countFinall2.ToString()).FormulaA1 = "SUM(AB16:AB" + countFinal2.ToString() + ")";
+            ws.Cell("AC" + countFinall2.ToString()).FormulaA1 = "SUM(AC16:AC" + countFinal2.ToString() + ")";
+            ws.Cell("AD" + countFinall2.ToString()).FormulaA1 = "SUM(AD16:AD" + countFinal2.ToString() + ")";
+            ws.Cell("AE" + countFinall2.ToString()).FormulaA1 = "SUM(AE16:AE" + countFinal2.ToString() + ")";
+            ws.Cell("AF" + countFinall2.ToString()).FormulaA1 = "SUM(AF16:AF" + countFinal2.ToString() + ")";
+            ws.Cell("AG" + countFinall2.ToString()).FormulaA1 = "SUM(AG16:AG" + countFinal2.ToString() + ")";
+            ws.Cell("AH" + countFinall2.ToString()).FormulaA1 = "SUM(AH16:AH" + countFinal2.ToString() + ")";
+            ws.Cell("AI" + countFinall2.ToString()).FormulaA1 = "SUM(AI16:AI" + countFinal2.ToString() + ")";
+            ws.Cell("AJ" + countFinall2.ToString()).FormulaA1 = "SUM(AJ16:AJ" + countFinal2.ToString() + ")";
+            ws.Cell("AK" + countFinall2.ToString()).FormulaA1 = "SUM(AK16:AK" + countFinal2.ToString() + ")";
+            ws.Cell("AL" + countFinall2.ToString()).FormulaA1 = "SUM(AL16:AL" + countFinal2.ToString() + ")";
+            ws.Cell("AM" + countFinall2.ToString()).FormulaA1 = "SUM(AM16:AM" + countFinal2.ToString() + ")";
+            ws.Cell("AN" + countFinall2.ToString()).FormulaA1 = "SUM(AN16:AN" + countFinal2.ToString() + ")";
+            ws.Cell("AO" + countFinall2.ToString()).FormulaA1 = "SUM(AO16:AO" + countFinal2.ToString() + ")";
+            ws.Cell("AP" + countFinall2.ToString()).FormulaA1 = "SUM(AP16:AP" + countFinal2.ToString() + ")";
+            ws.Cell("AQ" + countFinall2.ToString()).FormulaA1 = "SUM(AQ16:AQ" + countFinal2.ToString() + ")";
+            ws.Cell("AR" + countFinall2.ToString()).FormulaA1 = "SUM(AR16:AR" + countFinal2.ToString() + ")";
+            ws.Cell("AS" + countFinall2.ToString()).FormulaA1 = "SUM(AS16:AS" + countFinal2.ToString() + ")";
+            ws.Cell("AT" + countFinall2.ToString()).FormulaA1 = "SUM(AT16:AT" + countFinal2.ToString() + ")";
+            ws.Cell("AU" + countFinall2.ToString()).FormulaA1 = "SUM(AU16:AU" + countFinal2.ToString() + ")";
+            ws.Cell("AV" + countFinall2.ToString()).FormulaA1 = "SUM(AV16:AV" + countFinal2.ToString() + ")";
 
-            byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+
+            //wbook.SaveAs(rutaDocumentoResul);
+            //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+            byte[] archivoBytes = null;
+            using (var msA = new MemoryStream())
+            {
+                wbook.SaveAs(msA);
+                archivoBytes = msA.ToArray();
+            }
             string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
             CargarArchivoBase64 cargar = new CargarArchivoBase64();

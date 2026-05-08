@@ -94,6 +94,9 @@ namespace Conexion.AccesoDatos.Repository.Usuario
                 Rucedula = reader["Perfil"].ToString(),
                 RutaImagen = reader["RutaImagen"].ToString(),
                 ClaveTemporal = reader["ClaveTemporal"].ToString(),
+                Valor1  = (int)reader["Valor1"],
+                Valor2 = reader["Valor2"].ToString(),
+                Regimen = reader["Rucedula"].ToString(),
             };
         }
 

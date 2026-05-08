@@ -44,8 +44,11 @@ namespace WebAppConexion.Controllers
             db.Correo = model.Correo.ToLower();
             db.Rol = model.Rol;
             db.FondoReserva = model.FondoReserva;
+            db.Banco = model.Banco;
             db.Estado = model.Estado;
             db.Tipo = model.Tipo;
+            db.IdPlanCuenta = model.IdPlanCuenta;
+
             if (model.act_password == true)
             {
                 CrearPasswordHash(model.Contrasenia, out byte[] passwordHash, out byte[] passwordSalt);
@@ -59,6 +62,38 @@ namespace WebAppConexion.Controllers
                 valor1 = s.valor1,
                 valor2 = s.valor2
             });
+        }
+
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarPermisoMenu([FromBody] PermisoMenuViewModel model)
+        {
+
+            PermisoMenu db = new PermisoMenu();
+            db.IdEmpleado = model.IdEmpleado;
+            db.Lista = model.Lista;
+            db.Tipo = model.Tipo;
+
+            var responseResul = await _repository.InsertPermisoMenu(db);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<Generica>> EnviarMensajeWhatsapp(string Mensaje, string Numero)
+        {
+            DateTime date = DateTime.Now;
+
+            var response = await _repository.EnviarMensajeWhatsapp(Mensaje, Numero);
+            return response.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+
         }
 
         [HttpGet("[action]")]
@@ -84,7 +119,25 @@ namespace WebAppConexion.Controllers
                 FondoReserva = s.FondoReserva,
                 Estado =s.Estado,
                 MesesTrabajo = Math.Abs((date.Month - s.Ingreso.Month) + 12 * (date.Year - s.Ingreso.Year)),
+                Banco =s.Banco,
+                IdPlanCuenta = s.IdPlanCuenta,
+                Descripcion = s.Descripcion,
+            });
 
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<PermisoEmpleadoViewModel>> MostrarPermisoMenu(Int64 IdEmpleado, Int32 Tipo)
+        {
+            DateTime date = DateTime.Now;
+
+            var response = await _repository.GetByMostrarPermisoMenu(IdEmpleado, Tipo);
+            return response.Select(s => new PermisoEmpleadoViewModel
+            {
+                IdMenu = s.IdMenu,
+                Titulo = s.Titulo,
+                Estado = s.Estado,
+                ValorBool = s.ValorBool,
             });
 
         }

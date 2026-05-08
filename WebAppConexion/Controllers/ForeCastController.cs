@@ -68,6 +68,8 @@ namespace WebAppConexion.Controllers
             db.Usuario = model.Usuario;
             db.MotivoRechazo = model.MotivoRechazo;
             db.UltimaModificacion = model.UltimaModificacion;
+            db.TotalNegocio = model.TotalNegocio;
+            db.TotalSegundos = model.TotalSegundos;
             db.Estado = model.Estado;
             db.Tipo = model.Tipo;
 
@@ -87,6 +89,7 @@ namespace WebAppConexion.Controllers
             db.IdForeCast = model.IdForeCast;
             db.NumContrato = model.NumContrato;
             db.Usuario = model.Usuario;
+            db.NumConex = model.NumConex;
             db.Tipo = model.Tipo;
 
             var responseResul = await _repository.InsertarModificarEliminarConex(db);
@@ -98,14 +101,31 @@ namespace WebAppConexion.Controllers
         }
 
 
-        [HttpGet("[action]")]
-        public async Task<IEnumerable<Generica>> GuardarDetalleForeCast(string JsonDatos,Int64 IdForeCast)
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> InsertarModificarEliminarTotalNegSegun([FromBody] TotalNegSegunViewModel model)
+        {
+            TotalNegSegun db = new TotalNegSegun();
+            db.IdForeCast = model.IdForeCast;
+            db.TotalNegocio = model.TotalNegocio;
+            db.TotalSegundos = model.TotalSegundos;
+
+            var responseResul = await _repository.InsertarModificarEliminarTotalNegSegun(db);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarDetalleForeCast([FromBody] GuardarDetalleForeCastDto dto)
         {
             DatosExtra db = new DatosExtra();
-            db.IdForeCast = IdForeCast;           
+            db.IdForeCast = dto.IdForeCast;           
             db.Estado = 1;
             db.Tipo = 1;
-            var responseResul = await _repository.InsertDetalleForecast(db, JsonDatos);
+            var responseResul = await _repository.InsertDetalleForecast(db, dto.JsonDatos);
             return responseResul.Select(s => new Generica
             {
                 valor1 = s.valor1,
@@ -206,9 +226,9 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<ForeCastIntermedioViewModel>> MostrarForeCastIntermedio(Int64 IdForeCast, Int32 Tipo,string TipoDocumento)
+        public async Task<IEnumerable<ForeCastIntermedioViewModel>> MostrarForeCastIntermedio(Int64 IdForeCast, Int32 Tipo,string TipoDocumento, Int32 TipoProceso)
         {
-            var response = await _repository.GetByMostrarForeCastIntermedio(IdForeCast, Tipo, TipoDocumento);
+            var response = await _repository.GetByMostrarForeCastIntermedio(IdForeCast, Tipo, TipoDocumento, TipoProceso);
 
             return response.Select(s => new ForeCastIntermedioViewModel
             {
@@ -330,6 +350,8 @@ namespace WebAppConexion.Controllers
                 Numcontrato = s.Numcontrato,
                 NumPauta = s.NumPauta,
                 NumForeCast = s.NumForeCast,
+                TotalNegocio = s.TotalNegocio,
+                TotalSegundos = s.TotalSegundos,
             });
 
         }

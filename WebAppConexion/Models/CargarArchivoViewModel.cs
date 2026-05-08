@@ -16,5 +16,6 @@ namespace WebAppConexion.Models
         public string RutaArchivo { get; set; }
         public int Estado { get; set; }
         public int Tipo { get; set; }
+        public string perfil { get; set; }
     }
 }

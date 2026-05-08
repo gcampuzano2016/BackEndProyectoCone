@@ -1,4 +1,5 @@
 ﻿using Conexion.AccesoDatos.Repository.Negocio;
+using Conexion.Entidad.Administracion;
 using Conexion.Entidad.Negocio;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -96,9 +97,33 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteGeneralArchivoBase64(Int64 IdMedio, int Anio, int Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarReporteGeneralArchivoBase64(IdMedio, Anio, Tipo, TipoDocumento);
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+        }
+
+        [HttpGet("[action]")]
         public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteEstadoCuentaArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo,string TipoDocumento)
         {
             var response = await _repository.GetByMostrarReporteEstadoCuentaArchivoBase64(IdPlanCuenta, FechaInicio, FechaFinal, Tipo, TipoDocumento);
+
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteEstadoCuentaLibroMayorArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarReporteEstadoCuentaLibroMayorArchivoBase64(IdPlanCuenta, FechaInicio, FechaFinal, Tipo, TipoDocumento);
 
             return response.Select(s => new CargarArchivoBase64ViewModel
             {
@@ -135,9 +160,9 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarFacturaPorPagarFechaArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarFacturaPorPagarFechaArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento, string TipoDocumentos)
         {
-            var response = await _repository.GetByMostrarFacturaPorPagarFechaArchivoBase64(IdEmpleado, FechaInicio, FechaFinal, Tipo,TipoDocumento);
+            var response = await _repository.GetByMostrarFacturaPorPagarFechaArchivoBase64(IdEmpleado, FechaInicio, FechaFinal, Tipo,TipoDocumento, TipoDocumentos);
 
             return response.Select(s => new CargarArchivoBase64ViewModel
             {
@@ -156,6 +181,31 @@ namespace WebAppConexion.Controllers
                 ArchivoBase64 = s.ArchivoBase64,
             });
         }
+
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteEstadoResultadosArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarReporteEstadoResultadosArchivoBase64(IdPlanCuenta, FechaInicio, FechaFinal, Tipo, TipoDocumento);
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+        }
+
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarProveedorArchivoBase64(Int64 IdProveedor, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarProveedorArchivoBase64(IdProveedor, Tipo, TipoDocumento);
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+        }
+
 
 
         [HttpGet("[action]")]
@@ -188,6 +238,8 @@ namespace WebAppConexion.Controllers
                 FACTURADOPORMEDIO = s.FACTURADOPORMEDIO,
                 CERTIFICADOPORMEDIO = s.CERTIFICADOPORMEDIO,
                 PAGADOALMEDIO = s.PAGADOALMEDIO,
+                SEGUNDAJE_DERECHO = s.SEGUNDAJE_DERECHO,
+                TOTAL_SEGUNDOS = s.TOTAL_SEGUNDOS
             });
         }
 
@@ -275,6 +327,17 @@ namespace WebAppConexion.Controllers
         public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteDiarioArchivoBase64(Int64 IdMedio, int Anio, int Tipo, string TipoDocumento)
         {
             var response = await _repository.GetByMostrarReporteDiarioArchivoBase64(IdMedio, Anio, Tipo, TipoDocumento);
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteSegundoArchivoBase64(Int64 IdMedio, int Anio, int Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarReporteSegundoArchivoBase64(IdMedio, Anio, Tipo, TipoDocumento);
             return response.Select(s => new CargarArchivoBase64ViewModel
             {
                 NombreArchivo = s.NombreArchivo,
@@ -376,6 +439,37 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
+        public async Task<IEnumerable<ConsumoPautasViewModel>> MostrarReporteConsumo(Int64 IdMedio, Int64 IdEmpleado, string FechaInicio, string FechaFinal, string NumConex, Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarReporteConsumo(IdMedio, IdEmpleado, FechaInicio, FechaFinal, NumConex, Tipo);
+            return response.Select(s => new ConsumoPautasViewModel
+            {
+                NumContrato = s.NumContrato,
+                Anunciante = s.Anunciante,
+                TotalNegocio = s.TotalNegocio,
+                TotalSegundos = s.TotalSegundos,
+                TotalNegocioConsumido = s.TotalNegocioConsumido,
+                TotalSegundosConsumido = s.TotalSegundosConsumido,
+                SaldoTotalNegocio = s.SaldoTotalNegocio,
+                SaldoTotalSegundos = s.SaldoTotalSegundos,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarReporteConsumoArchivoBase64(Int64 IdMedio, Int64 IdEmpleado, string FechaInicio, string FechaFinal, string NumConex, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarReporteConsumoArchivoBase64(IdMedio, IdEmpleado, FechaInicio, FechaFinal, NumConex, Tipo, TipoDocumento);
+
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+
+        }
+
+        [HttpGet("[action]")]
         public async Task<IEnumerable<CobrosFacturasViewModel>> MostrarReporteFacturasCobradas(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
         {
             var response = await _repository.GetByMostrarReporteFacturasCobradas(IdEmpleado, FechaInicio, FechaFinal, Tipo);
@@ -410,6 +504,45 @@ namespace WebAppConexion.Controllers
         }
 
 
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarPlanCuentasSaldoFinalCeroBase64(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo,string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarPlanCuentasSaldoFinalCeroBase64(IdPlanCuenta, FechaInicio, Tipo, TipoDocumento);
+
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> MostrarPlanCuentasSaldoFinalBase64(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByMostrarPlanCuentasSaldoFinalBase64(IdPlanCuenta, FechaInicio, Tipo, TipoDocumento);
+
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+
+        }
+
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CargarArchivoBase64ViewModel>> ConsultaImpuestoIvaBase64(DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            var response = await _repository.GetByConsultaImpuestoIvaBase64(FechaInicio, FechaFinal, Tipo, TipoDocumento);
+
+            return response.Select(s => new CargarArchivoBase64ViewModel
+            {
+                NombreArchivo = s.NombreArchivo,
+                ArchivoBase64 = s.ArchivoBase64,
+            });
+
+        }
 
 
         #region VerErrores

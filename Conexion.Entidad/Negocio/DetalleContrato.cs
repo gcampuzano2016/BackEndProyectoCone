@@ -19,6 +19,8 @@ namespace Conexion.Entidad.Negocio
         public decimal TotalSegundos { get; set; }
         public decimal ValorNegocio { get; set; }
         public string Descripcion { get; set; }
+        public string Detalle { get; set; }
+        public string Versiones { get; set; }
 
     }
 }

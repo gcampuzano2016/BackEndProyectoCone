@@ -68,7 +68,7 @@ namespace WebAppConexion.Controllers
             db.Estado = model.Estado;
             db.Tipo = model.Tipo;
             db.jsonContable = model.jsonContable;
-
+            db.NumExtranjero = model.NumExtranjero;
 
             var responseResul = await _repository.Insert(db);
             return responseResul.Select(s => new Generica
@@ -78,13 +78,43 @@ namespace WebAppConexion.Controllers
             });
         }
 
-        [HttpGet("[action]")]
-        public async Task<IEnumerable<CuentasPorPagarViewModel>> MostrarFacturaPorPagarFecha(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> InsertarModificarFacturasCobradas([FromBody] ComisionPagadaViewModel model)
         {
-            var response = await _repository.GetByMostrarFacturaPorPagarFecha(IdEmpleado, FechaInicio, FechaFinal, Tipo);
+            ComisionPagada db = new ComisionPagada();
+            db.NumDocumento = model.NumDocumento;
+            db.Usuario = model.Usuario;
+            db.Tipo = model.Tipo;
 
-            #region generar archivo
+            var responseResul = await _repository.InsertarModificarFacturasCobradas(db);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<CuentasPorPagarViewModel>> MostrarFacturaPorPagarFecha(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo,string TipoDocumento, string RuCedula)
+        {
+            #region DatosCedula
+            if (TipoDocumento == null)
+            {
+                TipoDocumento = "";
+            }
+            string strRuCedula = "";
+            if(RuCedula == null)
+            {
+                strRuCedula = "";
+            }
+            else
+            {
+                string[] Proceso = RuCedula.Split('?');
+                strRuCedula = Proceso[1];
+            }
             #endregion
+
+            var response = await _repository.GetByMostrarFacturaPorPagarFecha(IdEmpleado, FechaInicio, FechaFinal, Tipo, TipoDocumento.Trim(), strRuCedula.Trim());
 
             return response.Select(s => new CuentasPorPagarViewModel
             {
@@ -110,7 +140,10 @@ namespace WebAppConexion.Controllers
                 TipoDocumento = s.TipoDocumento ,
                 IdProveedor = s.IdProveedor,
                 RutaDocumento = s.RutaDocumento,
-                stringArchivo64 =s.stringArchivo64
+                stringArchivo64 =s.stringArchivo64,
+                stringArchivo64PDF = s.stringArchivo64PDF,
+                Proceso = s.Proceso,
+                NumExtranjero = s.NumExtranjero,
             });
 
         }
@@ -148,6 +181,7 @@ namespace WebAppConexion.Controllers
                 Debe = s.Debe,
                 Haber = s.Haber,
                 tipo = s.tipo,
+                NumDocumento = s.NumDocumento 
             });
 
         }

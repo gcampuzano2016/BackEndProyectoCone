@@ -9,5 +9,6 @@ namespace WebAppConexion.Models
     {
         public Int64 IdPerfil { get; set; }
         public string Descripcion { get; set; }
+        public int Estado { get; set; }
     }
 }

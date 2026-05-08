@@ -1,5 +1,6 @@
 ﻿using Conexion.AccesoDatos.Repository.CArchivo;
 using Conexion.Entidad.Administracion;
+using Conexion.Entidad.Negocio;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -78,7 +79,7 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             CargarArchivo cargar = new CargarArchivo();
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
             string ruta = archivo.RutaArchivo; //"E:\\SubirArchivo\\";
             var response2 = new List<Generica>();
             cargar.RutaArchivo = ruta + cargar.nombreArchivo;

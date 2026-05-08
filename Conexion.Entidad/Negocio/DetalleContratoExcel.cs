@@ -11,6 +11,7 @@ namespace Conexion.Entidad.Negocio
         public string Canal { get; set; }
         public string Programa { get; set; }
         public string Detalle { get; set; }
+        public string Versiones { get; set; }
         public string Derecho { get; set; }
         public string Duracion { get; set; }
         public string Franja { get; set; }

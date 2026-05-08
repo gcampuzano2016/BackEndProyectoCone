@@ -19,5 +19,6 @@ namespace Conexion.Entidad.Negocio
         public decimal Comision { get; set; }
         public string Vendedor { get; set; }
         public string EstadoComision { get; set; }
+        public DateTime FechaCobroFactura { get; set; }
     }
 }

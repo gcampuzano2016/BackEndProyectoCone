@@ -41,7 +41,20 @@ namespace WebAppConexion.Controllers
                 AutorizacionSri = s.AutorizacionSri,
                 FechaAutorizacion = s.FechaAutorizacion,
                 FechaCaducidad = s.FechaCaducidad,
-                Estado = s.Estado 
+                Estado = s.Estado,
+                Retencion = s.Retencion,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<ProveedorViewModel>> MostrarProveedorTodos(Int64 IdProveedor, Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarProveedorTodos(IdProveedor, Tipo);
+            return response.Select(s => new ProveedorViewModel
+            {
+                IdProveedor = s.IdProveedor,
+                Nombre = s.Nombre,
             });
 
         }
@@ -63,6 +76,7 @@ namespace WebAppConexion.Controllers
             db.FechaAutorizacion = model.FechaAutorizacion;
             db.FechaCaducidad = model.FechaCaducidad;
             db.Estado = model.Estado;
+            db.Retencion = model.Retencion;
             db.Tipo = model.Tipo;
 
             var responseResul = await _repository.Insert(db);

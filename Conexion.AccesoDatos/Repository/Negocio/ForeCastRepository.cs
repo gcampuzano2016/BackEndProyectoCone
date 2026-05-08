@@ -63,6 +63,8 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     cmd.Parameters.Add(new SqlParameter("@Usuario", foreCast.Usuario));
                     cmd.Parameters.Add(new SqlParameter("@MotivoRechazo", foreCast.MotivoRechazo));
                     cmd.Parameters.Add(new SqlParameter("@UltimaModificacion", foreCast.UltimaModificacion));
+                    cmd.Parameters.Add(new SqlParameter("@TotalNegocio", foreCast.TotalNegocio));
+                    cmd.Parameters.Add(new SqlParameter("@TotalSegundos", foreCast.TotalSegundos));
                     cmd.Parameters.Add(new SqlParameter("@Estado", foreCast.Estado));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", foreCast.Tipo));
                     await sql.OpenAsync();
@@ -124,7 +126,35 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     cmd.Parameters.Add(new SqlParameter("@IdForeCast", conex.IdForeCast));
                     cmd.Parameters.Add(new SqlParameter("@NumContrato", conex.NumContrato));
                     cmd.Parameters.Add(new SqlParameter("@Usuario", conex.Usuario));
+                    cmd.Parameters.Add(new SqlParameter("@NumConex", conex.NumConex));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", conex.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<Generica>> InsertarModificarEliminarTotalNegSegun(TotalNegSegun totalNeg)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarTotalNegSegun", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdForeCast", totalNeg.IdForeCast));
+                    cmd.Parameters.Add(new SqlParameter("@TotalNegocio", totalNeg.TotalNegocio));
+                    cmd.Parameters.Add(new SqlParameter("@TotalSegundos", totalNeg.TotalSegundos));
                     await sql.OpenAsync();
                     //await cmd.ExecuteNonQueryAsync();
                     var response = new List<Generica>();
@@ -220,7 +250,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 }
             }
         }
-        public async Task<IEnumerable<ForeCastIntermedio>> GetByMostrarForeCastIntermedio(Int64 IdForeCast, Int32 Tipo,string TipoDocumento)
+        public async Task<IEnumerable<ForeCastIntermedio>> GetByMostrarForeCastIntermedio(Int64 IdForeCast, Int32 Tipo,string TipoDocumento, Int32 TipoProceso)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
@@ -242,7 +272,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
                     var response2 = await GetByMostrarForeCastReporte(IdForeCast, 5);
 
-                    GenerarReporte(response, response2, IdForeCast, TipoDocumento);
+                    GenerarReporte(response, response2, IdForeCast, TipoDocumento, TipoProceso);
                     return response;
                 }
             }
@@ -304,7 +334,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             CargarArchivoBase64 cargarArchivoBase = new CargarArchivoBase64();
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, IdForeCast, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, IdForeCast, TipoDocumento,0);
             string fecha;
             fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
             string rutaDocumento = "";
@@ -497,6 +527,8 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Numcontrato = (Int32)reader["Numcontrato"],
                 NumPauta = (Int32)reader["NumPauta"],
                 NumForeCast = (Int32)reader["NumForeCast"],
+                TotalNegocio = (decimal)reader["TotalNegocio"],
+                TotalSegundos = (decimal)reader["TotalSegundos"],
             };
         }
         private Generica MapToGenerica(SqlDataReader reader)
@@ -515,7 +547,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 ArchivoBase64 = reader["ArchivoBase64"].ToString()
             };
         }
-        private string GenerarReporte(List<ForeCastIntermedio> detalles, IEnumerable<ForeCastReporte> reportes,Int64 IdForeCast,string TipoDocumento)
+        private string GenerarReporte(List<ForeCastIntermedio> detalles, IEnumerable<ForeCastReporte> reportes,Int64 IdForeCast,string TipoDocumento, Int32 TipoProceso)
         {
             string Ruta = "";
             string Cliente = "";
@@ -523,7 +555,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ","_").Replace(":","_");
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, IdForeCast, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, IdForeCast, TipoDocumento, TipoProceso);
             string rutaDocumento = "";
             string rutaDocumentoResul = "";
             if (TipoDocumento == "SPONSOR")
@@ -538,9 +570,15 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
 
             DateTime dateTime = DateTime.Now;
+            int numeroRegistro = detalles.Count;
             using var wbook = new XLWorkbook(rutaDocumento);
             int cont = 16;
+            int cont2 = 14;
+            int ValorPorcentaje = numeroRegistro + 20;
+
+
             var ws = wbook.Worksheet(1);
+            ws.Row(16).InsertRowsBelow(numeroRegistro);
             foreach (ForeCastReporte s in reportes)
             {
                 ws.Cell("C7").Value =s.Cliente;
@@ -557,11 +595,27 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                 int valorPor = Convert.ToInt32(s.PorcentajeAgencia);
 
-                ws.Cell("G29").Value = valorPor;
-                ws.Cell("G29").Style.Font.Bold = true;
+                ws.Cell("G" + ValorPorcentaje.ToString()).Value = valorPor;
+                ws.Cell("G" + ValorPorcentaje.ToString()).Style.Font.Bold = true;
 
                 Cliente = s.Cliente;
+                int ivaValor = 0;
+                int ivaValor2 = 0;
+                ivaValor = ValorPorcentaje + 2;
+                ivaValor2 = ValorPorcentaje + 1;
+                DateTime fechaIva = Convert.ToDateTime("2024-03-31");
+                if (DateTime.Compare(fechaIva, s.FechaInicioPauta) < 0)
+                {
+                    ws.Cell("G" + ivaValor.ToString()).Value = "(+)  15% IVA"; //ANTES M
+                    ws.Cell("G" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES M
+
+                    ws.Cell("I" + ivaValor.ToString()).FormulaA1 = "=I" + ivaValor2.ToString() + "*" + "15%"; //ANTES O
+                    ws.Cell("I" + ivaValor.ToString()).Style.Font.Bold = true; //ANTES O
+                }
+
             }
+
+
 
             foreach (ForeCastIntermedio s in detalles)
             {
@@ -591,6 +645,10 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 ws.Cell("K" + cont.ToString()).Value = s.TotalSegundos;
                 cont++;
             }
+            int countFinal = cont + 0;
+            int countFinall = cont + 1;
+            ws.Cell("I" + countFinall.ToString()).FormulaA1 = "=SUM(I16:I" + countFinal.ToString() + ")"; //--N ANTES
+            ws.Cell("K" + countFinall.ToString()).FormulaA1 = "=SUM(K16:K" + countFinal.ToString() + ")"; //--O ANTES
             wbook.SaveAs(rutaDocumentoResul);
 
             byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);

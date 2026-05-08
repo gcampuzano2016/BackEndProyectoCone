@@ -21,6 +21,7 @@ namespace WebAppConexion.Models
         public DateTime FechaAutorizacion { get; set; }
         public DateTime FechaCaducidad { get; set; }
         public int Estado { get; set; }
+        public string Retencion { get; set; }
         public int Tipo { get; set; }
     }
 }

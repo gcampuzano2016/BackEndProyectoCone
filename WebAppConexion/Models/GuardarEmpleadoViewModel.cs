@@ -24,5 +24,7 @@ namespace WebAppConexion.Models
         public int Tipo { get; set; }
         public bool act_password { get; set; }
         public string Contrasenia { get; set; }
+        public string Banco { get; set; }
+        public Int64 IdPlanCuenta { get; set; }
     }
 }

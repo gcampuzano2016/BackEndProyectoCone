@@ -39,5 +39,12 @@ namespace WebAppConexion.Models
         public decimal Iva { get; set; }
         public decimal Total { get; set; }
         public decimal SubTotal { get; set; }
+        public decimal TotalRetencion { get; set; }
+        public string RutaRetencionPDF { get; set; }
+        public string RutaRetencion { get; set; }
+        public string RutaFacturaPDF { get; set; }
+        public string RutaFacturaXML { get; set; }
+        public string NumRetencion { get; set; }
+
     }
 }

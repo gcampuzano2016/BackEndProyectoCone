@@ -72,7 +72,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
 
                 var rowCount = workBook.Worksheet(1).LastRowUsed().RowNumber();
                 var columnCount = workBook.Worksheet(1).LastColumnUsed().ColumnNumber();
-                rowCount = rowCount - 1;
+                //rowCount = rowCount - 1;
                 int column = 1;
                 int row = 2;
                 while (row <= rowCount)
@@ -153,6 +153,8 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                         detalle.unidad = llString[5];
                         detalle.cantidad =Convert.ToDecimal(llString[6]);
                         detalle.precio = Convert.ToDecimal(llString[7]);
+                        detalle.detalle = llString[8];
+                        detalle.versiones = llString[9];
                         ll.Add(detalle);
                         #endregion
                     }
@@ -162,6 +164,115 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
             return (string)json;
         }
         #endregion
+
+
+        #region SubirArchivoMapaPautaValidar
+        public string SubirArchivoMapaPautaValidar(string rutaDocumento)
+        {
+            //Create a new DataTable.
+            string json = "";
+            DataTable dt = new DataTable();
+            EntRespuesta entRespuesta = new EntRespuesta();
+            List<CargaForeCast> ll = new List<CargaForeCast>();
+            using (XLWorkbook workBook = new XLWorkbook(rutaDocumento))
+            {
+                //Read the first Sheet from Excel file.
+                IXLWorksheet workSheet = workBook.Worksheet(1);
+
+                var rowCount = workBook.Worksheet(1).LastRowUsed().RowNumber();
+                var columnCount = workBook.Worksheet(1).LastColumnUsed().ColumnNumber();
+                //rowCount = rowCount - 1;
+                int column = 1;
+                int row = 16;
+                while (row <= rowCount)
+                {
+                    List<string> llString = new List<string>();
+                    while (column <= columnCount)
+                    {
+                        string title = workBook.Worksheets.Worksheet(1).Cell(row, column).GetString();
+                        llString.Add(title);
+                        column++;
+                    }
+
+                    row++;
+                    column = 1;
+                    if (llString[1] != "" && llString[1] != "VALOR TOTAL")
+                    {
+                        #region LLenarDatos
+                        CargaForeCast detalle = new CargaForeCast();
+                        detalle.canal = llString[1];
+                        detalle.programa = llString[2];
+                        detalle.franja = llString[7];
+                        detalle.derecho = llString[5];
+                        detalle.formato = llString[6];
+                        detalle.unidad = "";
+                        detalle.cantidad = 0;
+                        detalle.precio = 0;
+                        detalle.detalle = "";
+                        ll.Add(detalle);
+                        #endregion
+                    }
+                }
+                json = JsonConvert.SerializeObject(ll);
+            }
+            return (string)json;
+        }
+        #endregion
+
+        #region SubirArchivoDetalleContrato
+        public string SubirArchivoDetalleContrato(string rutaDocumento)
+        {
+            //Create a new DataTable.
+            string json = "";
+            DataTable dt = new DataTable();
+            EntRespuesta entRespuesta = new EntRespuesta();
+            List<CargaForeCast> ll = new List<CargaForeCast>();
+            using (XLWorkbook workBook = new XLWorkbook(rutaDocumento))
+            {
+                //Read the first Sheet from Excel file.
+                IXLWorksheet workSheet = workBook.Worksheet(1);
+
+                var rowCount = workBook.Worksheet(1).LastRowUsed().RowNumber();
+                var columnCount = workBook.Worksheet(1).LastColumnUsed().ColumnNumber();
+                //rowCount = rowCount - 1;
+                int column = 1;
+                int row = 2;
+                while (row <= rowCount)
+                {
+                    List<string> llString = new List<string>();
+                    while (column <= columnCount)
+                    {
+                        string title = workBook.Worksheets.Worksheet(1).Cell(row, column).GetString();
+                        llString.Add(title);
+                        column++;
+                    }
+
+                    row++;
+                    column = 1;
+                    if (llString[1] != "")
+                    {
+                        #region LLenarDatos
+                        CargaForeCast detalle = new CargaForeCast();
+                        detalle.canal = llString[0];
+                        detalle.programa = llString[1];
+                        detalle.franja = llString[2];
+                        detalle.derecho = llString[3];
+                        detalle.formato = llString[4];
+                        detalle.unidad = llString[5];
+                        detalle.cantidad = Convert.ToDecimal(llString[6]);
+                        detalle.precio = Convert.ToDecimal(llString[7]);
+                        detalle.detalle = llString[8];
+                        detalle.versiones = llString[9];
+                        ll.Add(detalle);
+                        #endregion
+                    }
+                }
+                json = JsonConvert.SerializeObject(ll);
+            }
+            return (string)json;
+        }
+        #endregion
+
 
         #region SubirArchivo
         public string SubirArchivo(CargarArchivo cargar)
@@ -211,53 +322,54 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                                 detalle.Canal = llString[0];
                                 detalle.Programa = llString[1];
                                 detalle.Detalle = llString[2];
-                                detalle.Derecho = llString[3];
-                                detalle.Duracion = llString[4];
-                                detalle.Franja = llString[5];
-                                detalle.Tarifa = llString[6];
+                                detalle.Versiones = llString[3];
+                                detalle.Derecho = llString[4];
+                                detalle.Duracion = llString[5];
+                                detalle.Franja = llString[6];
+                                detalle.Tarifa = llString[7];
 
-                                detalle.Valor1 = llString[7];
-                                detalle.Valor2 = llString[8];
-                                detalle.Valor3 = llString[9];
-                                detalle.Valor4 = llString[10];
+                                detalle.Valor1 = llString[8];
+                                detalle.Valor2 = llString[9];
+                                detalle.Valor3 = llString[10];
+                                detalle.Valor4 = llString[11];
 
-                                detalle.TotalSegundo = llString[12];
-                                detalle.ValorNegocio = llString[13];
+                                detalle.TotalSegundo = llString[13];
+                                detalle.ValorNegocio = llString[14];
 
-                                detalle.data_1 = llString[14];
-                                detalle.data_2 = llString[15];
-                                detalle.data_3 = llString[16];
-                                detalle.data_4 = llString[17];
-                                detalle.data_5 = llString[18];
-                                detalle.data_6 = llString[19];
-                                detalle.data_7 = llString[20];
-                                detalle.data_8 = llString[21];
-                                detalle.data_9 = llString[22];
-                                detalle.data_10 = llString[23];
+                                detalle.data_1 = llString[15];
+                                detalle.data_2 = llString[16];
+                                detalle.data_3 = llString[17];
+                                detalle.data_4 = llString[18];
+                                detalle.data_5 = llString[19];
+                                detalle.data_6 = llString[20];
+                                detalle.data_7 = llString[21];
+                                detalle.data_8 = llString[22];
+                                detalle.data_9 = llString[23];
+                                detalle.data_10 = llString[24];
 
-                                detalle.data_11 = llString[24];
-                                detalle.data_12 = llString[25];
-                                detalle.data_13 = llString[26];
-                                detalle.data_14 = llString[27];
-                                detalle.data_15 = llString[28];
-                                detalle.data_16 = llString[29];
-                                detalle.data_17 = llString[30];
-                                detalle.data_18 = llString[31];
-                                detalle.data_19 = llString[32];
-                                detalle.data_20 = llString[33];
+                                detalle.data_11 = llString[25];
+                                detalle.data_12 = llString[26];
+                                detalle.data_13 = llString[27];
+                                detalle.data_14 = llString[28];
+                                detalle.data_15 = llString[29];
+                                detalle.data_16 = llString[30];
+                                detalle.data_17 = llString[31];
+                                detalle.data_18 = llString[32];
+                                detalle.data_19 = llString[33];
+                                detalle.data_20 = llString[34];
 
-                                detalle.data_21 = llString[34];
-                                detalle.data_22 = llString[35];
-                                detalle.data_23 = llString[36];
-                                detalle.data_24 = llString[37];
-                                detalle.data_25 = llString[38];
-                                detalle.data_26 = llString[39];
-                                detalle.data_27 = llString[40];
-                                detalle.data_28 = llString[41];
-                                detalle.data_29 = llString[42];
-                                detalle.data_30 = llString[43];
-                                detalle.data_31 = llString[44];
-                                detalle.Impacto = llString[45];
+                                detalle.data_21 = llString[35];
+                                detalle.data_22 = llString[36];
+                                detalle.data_23 = llString[37];
+                                detalle.data_24 = llString[38];
+                                detalle.data_25 = llString[39];
+                                detalle.data_26 = llString[40];
+                                detalle.data_27 = llString[41];
+                                detalle.data_28 = llString[42];
+                                detalle.data_29 = llString[43];
+                                detalle.data_30 = llString[44];
+                                detalle.data_31 = llString[45];
+                                detalle.Impacto = llString[46];
                                 ll.Add(detalle);
                                 #endregion
                             }
@@ -267,7 +379,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                     var json = JsonConvert.SerializeObject(ll);
                     dt = (DataTable)JsonConvert.DeserializeObject(json, (typeof(DataTable)));
 
-                    entRespuesta = ActualizarDetalleContrato(1, data.IdContrato, dt, 1);
+                    entRespuesta = ActualizarDetalleContrato(1, data.IdContrato, dt, json, 1,cargar.perfil);
                 }
             }
             else if(cargar.Tipo == 2)
@@ -328,12 +440,178 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
         }
         #endregion
 
+        #region SubirArchivoContrato
+        public EntRespuesta SubirArchivoContrato(CargarArchivo cargar)
+        {
+            //Create a new DataTable.
+            DataTable dt = new DataTable();
+            EntRespuesta entRespuesta = new EntRespuesta();
+
+            //Open the Excel file using ClosedXML.
+
+            List<CargarArchivo> cargarArchivos = new List<CargarArchivo>();
+
+            if (cargar.Tipo == 1)
+            {
+                cargarArchivos = MostrarCargaArhivo(cargar.Tipo, cargar.IdContrato);
+                List<DetalleContratoExcel> ll = new List<DetalleContratoExcel>();
+                foreach (CargarArchivo data in cargarArchivos)
+                {
+                    using (XLWorkbook workBook = new XLWorkbook(data.RutaArchivo))
+                    {
+                        //Read the first Sheet from Excel file.
+                        IXLWorksheet workSheet = workBook.Worksheet(1);
+
+                        var rowCount = workBook.Worksheet(1).LastRowUsed().RowNumber();
+                        var columnCount = workBook.Worksheet(1).LastColumnUsed().ColumnNumber();
+                        rowCount = rowCount - 8;
+                        int column = 2;
+                        int row = 16;
+
+
+                        while (row <= rowCount)
+                        {
+                            List<string> llString = new List<string>();
+                            while (column <= columnCount)
+                            {
+                                string title = workBook.Worksheets.Worksheet(1).Cell(row, column).GetString();
+                                llString.Add(title);
+                                column++;
+                            }
+
+                            row++;
+                            column = 2;
+                            if (llString[1] != "")
+                            {
+                                #region LLenarDatos
+                                DetalleContratoExcel detalle = new DetalleContratoExcel();
+                                detalle.Canal = llString[0];
+                                detalle.Programa = llString[1];
+                                detalle.Detalle = llString[2];
+                                detalle.Versiones = llString[3];
+                                detalle.Derecho = llString[4];
+                                detalle.Duracion = llString[5];
+                                detalle.Franja = llString[6];
+                                detalle.Tarifa = llString[7];
+
+                                detalle.Valor1 = llString[8];
+                                detalle.Valor2 = llString[9];
+                                detalle.Valor3 = llString[10];
+                                detalle.Valor4 = llString[11];
+
+                                detalle.TotalSegundo = llString[13];
+                                detalle.ValorNegocio = llString[14];
+
+                                detalle.data_1 = llString[15];
+                                detalle.data_2 = llString[16];
+                                detalle.data_3 = llString[17];
+                                detalle.data_4 = llString[18];
+                                detalle.data_5 = llString[19];
+                                detalle.data_6 = llString[20];
+                                detalle.data_7 = llString[21];
+                                detalle.data_8 = llString[22];
+                                detalle.data_9 = llString[23];
+                                detalle.data_10 = llString[24];
+
+                                detalle.data_11 = llString[25];
+                                detalle.data_12 = llString[26];
+                                detalle.data_13 = llString[27];
+                                detalle.data_14 = llString[28];
+                                detalle.data_15 = llString[29];
+                                detalle.data_16 = llString[30];
+                                detalle.data_17 = llString[31];
+                                detalle.data_18 = llString[32];
+                                detalle.data_19 = llString[33];
+                                detalle.data_20 = llString[34];
+
+                                detalle.data_21 = llString[35];
+                                detalle.data_22 = llString[36];
+                                detalle.data_23 = llString[37];
+                                detalle.data_24 = llString[38];
+                                detalle.data_25 = llString[39];
+                                detalle.data_26 = llString[40];
+                                detalle.data_27 = llString[41];
+                                detalle.data_28 = llString[42];
+                                detalle.data_29 = llString[43];
+                                detalle.data_30 = llString[44];
+                                detalle.data_31 = llString[45];
+                                detalle.Impacto = llString[46];
+                                ll.Add(detalle);
+                                #endregion
+                            }
+                        }
+
+                    }
+                    var json = JsonConvert.SerializeObject(ll);
+                    dt = (DataTable)JsonConvert.DeserializeObject(json, (typeof(DataTable)));
+
+                    entRespuesta = ActualizarDetalleContrato(1, data.IdContrato, dt, json, 1,cargar.perfil);
+                }
+            }
+            else if (cargar.Tipo == 2)
+            {
+                cargarArchivos = MostrarCargaArhivo(cargar.Tipo, cargar.IdForeCast);
+                List<DetalleForeCastCarga> ll = new List<DetalleForeCastCarga>();
+                foreach (CargarArchivo data in cargarArchivos)
+                {
+                    using (XLWorkbook workBook = new XLWorkbook(data.RutaArchivo))
+                    {
+                        //Read the first Sheet from Excel file.
+                        IXLWorksheet workSheet = workBook.Worksheet(1);
+
+                        var rowCount = workBook.Worksheet(1).LastRowUsed().RowNumber();
+                        var columnCount = workBook.Worksheet(1).LastColumnUsed().ColumnNumber();
+                        rowCount = rowCount - 8;
+                        int column = 2;
+                        int row = 16;
+
+
+                        while (row <= rowCount)
+                        {
+                            List<string> llString = new List<string>();
+                            while (column <= columnCount)
+                            {
+                                string title = workBook.Worksheets.Worksheet(1).Cell(row, column).GetString();
+                                llString.Add(title);
+                                column++;
+                            }
+
+                            row++;
+                            column = 2;
+                            if (llString[0] != "")
+                            {
+                                #region LLenarDatos
+                                DetalleForeCastCarga detalle = new DetalleForeCastCarga();
+                                detalle.Canal = llString[0];
+                                detalle.Programa = llString[1];
+                                detalle.Franja = llString[2];
+                                detalle.Derecho = llString[3];
+                                detalle.Formato = llString[4];
+                                detalle.Unidad = llString[5];
+                                detalle.Cantidad = Convert.ToDecimal(llString[6]);
+                                detalle.Precio = Convert.ToDecimal(llString[7]);
+                                ll.Add(detalle);
+                                #endregion
+                            }
+                        }
+
+                    }
+                    var json = JsonConvert.SerializeObject(ll);
+                    dt = (DataTable)JsonConvert.DeserializeObject(json, (typeof(DataTable)));
+
+                    entRespuesta = InsertarModificarEliminarDetalleForecastCarga(data.IdForeCast, dt, 1);
+                }
+            }
+            return entRespuesta;
+        }
+        #endregion
+
         #region GenerarlRolDePagos
-        
+
         #endregion
 
         #region ActualizarDetalleContrato
-        public EntRespuesta ActualizarDetalleContrato(Int64 IdForeCast, Int64 IdContrato, DataTable detalleContrato, int Tipo)
+        public EntRespuesta ActualizarDetalleContrato(Int64 IdForeCast, Int64 IdContrato, DataTable detalleContrato,string Json, int Tipo,string Perfil)
         {
             EntRespuesta Respuesta = new EntRespuesta();
             DataTable dtResultados = new DataTable();
@@ -349,6 +627,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                 cmd.Parameters.AddWithValue("@IdContrato", IdContrato);
                 cmd.Parameters.AddWithValue("@SLQDetalleContrato", detalleContrato);
                 cmd.Parameters.AddWithValue("@Tipo", Tipo);
+                cmd.Parameters.AddWithValue("@Perfil", Perfil);
                 cmd.CommandType = CommandType.StoredProcedure;
                 dr = cmd.ExecuteReader();
                 dtResultados.Load(dr);
@@ -356,6 +635,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                 if (dtResultados.Rows.Count > 0)
                 {
                     Respuesta.mensaje = dtResultados.Rows[0][0].ToString();
+                    Respuesta.estado = dtResultados.Rows[0][1].ToString();
                 }
             }
             catch (Exception ex)
@@ -546,7 +826,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
         #endregion
 
         #region MostrarCargaArhivoConfig
-        public PrmConfiguracionArchivo MostrarCargaArhivoConfig(Int64 IdContrato,Int64 IdForeCast,string TipoDocumento)
+        public PrmConfiguracionArchivo MostrarCargaArhivoConfig(Int64 IdContrato,Int64 IdForeCast,string TipoDocumento, Int32 TipoProceso)
         {
             PrmConfiguracionArchivo cargarArchivos = null;
             SqlCommand cmd = null;
@@ -559,6 +839,7 @@ namespace Conexion.AccesoDatos.Repository.CArchivo
                 cmd.Parameters.AddWithValue("@IdContrato", IdContrato);
                 cmd.Parameters.AddWithValue("@IdForeCast", IdForeCast);
                 cmd.Parameters.AddWithValue("@TipoDocumento", TipoDocumento);
+                cmd.Parameters.AddWithValue("@TipoProceso", TipoProceso);
                 cmd.CommandType = CommandType.StoredProcedure;
                 dr = cmd.ExecuteReader();
                 cargarArchivos = new PrmConfiguracionArchivo();

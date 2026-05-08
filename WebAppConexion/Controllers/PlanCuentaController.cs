@@ -48,6 +48,22 @@ namespace WebAppConexion.Controllers
             });
         }
 
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> CierrePlanCuentas([FromBody] PlanCuentaViewModel model)
+        {
+            PlanCuenta db = new PlanCuenta();
+            db.FechaCierre = model.FechaCierre;
+            db.Estado = model.Estado;
+            db.Tipo = model.Tipo;
+
+            var responseResul = await _repository.CierrePlanCuentas(db);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
         [HttpGet("[action]")]
         public async Task<IEnumerable<PlanCuentaViewModel>> MostrarPlanCuentas(Int64 IdPlanCuenta, Int32 Tipo)
         {
@@ -65,6 +81,43 @@ namespace WebAppConexion.Controllers
             });
 
         }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<PlanCuentaViewModel>> MostrarPlanCuentasSaldoFinal(Int64 IdPlanCuenta,DateTime FechaInicio, Int32 Tipo)
+        {
+            var response = await _repository.GetByPlanCuentasSaldoFinal(IdPlanCuenta, FechaInicio, Tipo);
+            return response.Select(s => new PlanCuentaViewModel
+            {
+                IdPlanCuenta = s.IdPlanCuenta,
+                SaldoInicial = s.SaldoInicial,
+                Descripcion = s.Descripcion,
+                Codigo = s.Codigo,
+                Debe = s.Debe,
+                Haber = s.Haber,
+                SaldoFinal = s.SaldoFinal,
+                Estado = s.Estado,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<PlanCuentaViewModel>> MostrarPlanCuentasSaldoFinalCero(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo)
+        {
+            var response = await _repository.GetByPlanCuentasSaldoFinalCero(IdPlanCuenta, FechaInicio, Tipo);
+            return response.Select(s => new PlanCuentaViewModel
+            {
+                IdPlanCuenta = s.IdPlanCuenta,
+                SaldoInicial = s.SaldoInicial,
+                Descripcion = s.Descripcion,
+                Codigo = s.Codigo,
+                Debe = s.Debe,
+                Haber = s.Haber,
+                SaldoFinal = s.SaldoFinal,
+                Estado = s.Estado,
+            });
+
+        }
+
 
         [HttpGet("[action]")]
         public async Task<IEnumerable<UnionIngresoEgresoViewModel>> MostrarUnionIngresoEgreso(Int64 IdProcesoContable, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
@@ -108,6 +161,23 @@ namespace WebAppConexion.Controllers
 
         }
 
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<LibroMayorViewModel>> MostrarReporteEstadoCuentaLibroMayor(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarReporteEstadoCuentaLibroMayor(IdPlanCuenta, FechaInicio, FechaFinal, Tipo);
+
+
+            return response.Select(s => new LibroMayorViewModel
+            {
+                FECHA = s.FECHA,
+                CONCEPTO = s.CONCEPTO,
+                DEBITO = s.DEBITO,
+                CREDITO =s.CREDITO,
+                SALDO =s.SALDO,
+            });
+
+        }
+
 
         [HttpGet("[action]")]
         public async Task<IEnumerable<BalanceComprobacionViewModel>> MostrarReporteBalanceComprobacion(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
@@ -130,7 +200,24 @@ namespace WebAppConexion.Controllers
 
         }
 
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<EstadoFinancieroViewModel>> MostrarReporteEstadoResultados(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarReporteEstadoResultados(IdPlanCuenta, FechaInicio, FechaFinal, Tipo);
 
+            #region generar archivo
+            #endregion
+
+            return response.Select(s => new EstadoFinancieroViewModel
+            {
+                CODIGO = s.CODIGO,
+                CUENTA = s.CUENTA,
+                PARCIAL = s.PARCIAL,
+                SUBTOTAL = s.SUBTOTAL,
+                TOTAL = s.TOTAL,
+            });
+
+        }
 
         [HttpGet("[action]")]
         public async Task<IEnumerable<RegistroContableViewModel>> MostrarRegistroContable(Int64 IdProcesoContable, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)

@@ -16,5 +16,7 @@ namespace Conexion.Entidad.Administracion
         public string unidad { get; set; }
         public decimal cantidad { get; set; }
         public decimal precio { get; set; }
+        public string detalle { get; set; }
+        public string versiones { get; set; }
     }
 }

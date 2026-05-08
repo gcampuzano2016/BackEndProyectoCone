@@ -38,5 +38,8 @@ namespace Conexion.Entidad.Negocio
         public string PAGADOALMEDIO { get; set; }
         public string FACTXCONEX { get; set; }
         public string XFACTCONEX { get; set; }
+        public string SEGUNDAJE_DERECHO { get; set; }
+        public string TOTAL_SEGUNDOS { get; set; }
+
     }
 }

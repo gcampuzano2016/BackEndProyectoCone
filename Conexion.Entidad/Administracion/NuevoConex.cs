@@ -11,6 +11,7 @@ namespace Conexion.Entidad.Administracion
         public Int64 IdForeCast { get; set; }
         public string NumContrato { get; set; }
         public string Usuario { get; set; }
+        public decimal NumConex { get; set; }
         public int Tipo { get; set; }
     }
 }

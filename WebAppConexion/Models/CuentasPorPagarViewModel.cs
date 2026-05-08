@@ -32,8 +32,11 @@ namespace WebAppConexion.Models
         public string jsonContable { get; set; }
         public string RutaDocumento { get; set; }
         public string stringArchivo64 { get; set; }
+        public string stringArchivo64PDF { get; set; }
         public int PorRegistrar { get; set; }
         public decimal Saldo { get; set; }
         public string NumDocumentoReducido { get; set; }
+        public string Proceso { get; set; }
+        public string NumExtranjero { get; set; }
     }
 }

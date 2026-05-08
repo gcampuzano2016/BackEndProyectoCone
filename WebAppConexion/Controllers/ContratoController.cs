@@ -99,8 +99,30 @@ namespace WebAppConexion.Controllers
             db.base64textString = model.base64textString;
             db.Estado = model.Estado;
             db.Tipo = model.Tipo;
+            db.perfil = model.perfil;
 
             var responseResul = await _repository.CargaArchivo(db);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarArchivoPro([FromBody] CargarArchivoViewModel model)
+        {
+            CargarArchivo db = new CargarArchivo();
+            db.IdContrato = model.IdContrato;
+            db.IdForeCast = model.IdForeCast;
+            db.nombre = model.nombre;
+            db.nombreArchivo = model.nombreArchivo;
+            db.base64textString = model.base64textString;
+            db.Estado = model.Estado;
+            db.Tipo = model.Tipo;
+
+            var responseResul = await _repository.CargaArchivoPro(db);
             return responseResul.Select(s => new Generica
             {
                 valor1 = s.valor1,
@@ -149,6 +171,51 @@ namespace WebAppConexion.Controllers
                 valor2 = s.valor2
             });
         }
+
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> CargaArchivoValidarRelacionMedios([FromBody] CargarArchivoViewModel model)
+        {
+            CargarArchivo db = new CargarArchivo();
+            db.IdContrato = model.IdContrato;
+            db.IdForeCast = model.IdForeCast;
+            db.nombre = model.nombre;
+            db.nombreArchivo = model.nombreArchivo;
+            db.base64textString = model.base64textString;
+            db.Estado = model.Estado;
+            db.Tipo = model.Tipo;
+
+            var responseResul = await _repository.CargaArchivoValidarRelacionMedios(db);
+
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+
+
+        [HttpPost("[action]")]
+        public async Task<IEnumerable<Generica>> CargaArchivoValidarRelacionMapaPauta([FromBody] CargarArchivoViewModel model)
+        {
+            CargarArchivo db = new CargarArchivo();
+            db.IdContrato = model.IdContrato;
+            db.IdForeCast = model.IdForeCast;
+            db.nombre = model.nombre;
+            db.nombreArchivo = model.nombreArchivo;
+            db.base64textString = model.base64textString;
+            db.Estado = model.Estado;
+            db.Tipo = model.Tipo;
+
+            var responseResul = await _repository.CargaArchivoValidarRelacionMapaPauta(db);
+
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
 
         [HttpPost("[action]")]
         public async Task<IEnumerable<Generica>> GuardarArchivoImagen([FromBody] CargarArchivoViewModel model)
@@ -210,6 +277,10 @@ namespace WebAppConexion.Controllers
                 FechaInicioPauta = s.FechaInicioPauta,
                 FechaFinalPauta = s.FechaFinalPauta,
                 NumContrato = s.NumContrato,
+                Estado = s.Estado,
+                TotalNegocio = s.TotalNegocio,
+                TotalSegundos = s.TotalSegundos,
+                RucVendedor = s.RucVendedor
             });
 
         }
@@ -256,6 +327,21 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
+        public async Task<IEnumerable<ContratoExteriorViewModel>> MostrarContratoExterior(string Medio, Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarContratoExterior(Medio, Tipo);
+            return response.Select(s => new ContratoExteriorViewModel
+            {
+                NumContrato = s.NumContrato,
+                NombreProyecto = s.NombreProyecto,
+                FechaRegistro = s.FechaRegistro,
+                Anunciante = s.Anunciante,
+                Email = s.Email,
+            });
+
+        }
+
+        [HttpGet("[action]")]
         public async Task<IEnumerable<DetalleContratoViewModel>> MostrarDetalleContrato(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo)
         {
             var response = await _repository.GetByMostrarDetalleContrato(IdForeCast, IdContrato, Tipo);
@@ -275,7 +361,9 @@ namespace WebAppConexion.Controllers
                 Tarifa = s.Tarifa,
                 TotalSegundos = s.TotalSegundos,
                 ValorNegocio = s.ValorNegocio,
-                Descripcion = s.Descripcion
+                Descripcion = s.Descripcion,
+                Detalle = s.Detalle
+                
             });
 
         }
@@ -312,15 +400,16 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<DetalleContratoExcelViewModel>> MostrarDetalleContratoExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo)
+        public async Task<IEnumerable<DetalleContratoExcelViewModel>> MostrarDetalleContratoExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo, Int32 TipoProceso)
         {
-            var response = await _repository.GetByMostrarDetalleContratoExcel(IdForeCast, IdContrato, Tipo);
+            var response = await _repository.GetByMostrarDetalleContratoExcel(IdForeCast, IdContrato, Tipo, TipoProceso);
 
             return response.Select(s => new DetalleContratoExcelViewModel
             {
                 Canal = s.Canal,
                 Programa = s.Programa,
                 Detalle = s.Detalle,
+                Versiones = s.Versiones,
                 Duracion = s.Duracion,
                 Derecho = s.Derecho,
                 Franja = s.Franja,
@@ -364,15 +453,16 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<DetalleContratoExcelViewModel>> MostrarDetallePautaExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo)
+        public async Task<IEnumerable<DetalleContratoExcelViewModel>> MostrarDetallePautaExcel(Int64 IdForeCast, Int64 IdContrato, Int32 Tipo, Int32 TipoProceso)
         {
-            var response = await _repository.GetByMostrarDetallePautaExcel(IdForeCast, IdContrato, Tipo);
+            var response = await _repository.GetByMostrarDetallePautaExcel(IdForeCast, IdContrato, Tipo, TipoProceso);
 
             return response.Select(s => new DetalleContratoExcelViewModel
             {
                 Canal = s.Canal,
                 Programa = s.Programa,
                 Detalle = s.Detalle,
+                Versiones = s.Versiones,
                 Duracion = s.Duracion,
                 Derecho = s.Derecho,
                 Franja = s.Franja,
@@ -421,8 +511,29 @@ namespace WebAppConexion.Controllers
         {
             var response = await _repository.GetByMostrarContratoPorFacturar(IdMedio, FechaInicio, FechaFinal, Tipo);
 
-            #region generar archivo
-            #endregion
+            return response.Select(s => new FacturaContratoViewModel
+            {
+                IdContrato = s.IdContrato,
+                NumContrato = s.NumContrato,
+                FechaInicio = s.FechaInicio,
+                FechaFinal = s.FechaFinal,
+                ValorBruto = s.ValorBruto,
+                ComiAgen = s.ComiAgen,
+                ValorAgen = s.ValorAgen,
+                Valor = s.Valor,
+                ValorConex = s.ValorConex,
+                Anunciante = s.Anunciante,
+                Mes = s.Mes,
+                Anio = s.Anio,
+                NumOrden = s.NumOrden,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<FacturaContratoViewModel>> MostrarFacturaNotaCreditoSeleccionada(Int64 IdMedio, string IdContrato,  Int32 Tipo)
+        {
+            var response = await _repository.GetByMostrarFacturaNotaCreditoSeleccionada(IdMedio, IdContrato, Tipo);
 
             return response.Select(s => new FacturaContratoViewModel
             {
@@ -444,9 +555,27 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<Generica>> GuardarPagoContrato(string JsonDatos,string JsonDatosFinal, string Descripcion,string FechaEmision)
+        public async Task<IEnumerable<CargarFacturaViewModel>> MostrarFacturaNotaCreditoLista(Int64 IdMedio, string IdContrato, Int32 Tipo)
         {
-            var responseResul = await _repository.InsertPagoContrato(JsonDatos, JsonDatosFinal, Descripcion, 1,1, FechaEmision);
+            var response = await _repository.GetByMostrarFacturaNotaCreditoLista(IdMedio, IdContrato, Tipo);
+
+            return response.Select(s => new CargarFacturaViewModel
+            {
+                ValorBruto = s.ValorBruto,
+                ValorNeto = s.ValorNeto,
+                ValorCobrar = s.ValorCobrar,
+                Iva = s.Iva,
+                Total = s.Total,
+                NumDocumento = s.NumDocumento,
+                IdContrato = s.IdContrato,
+            });
+
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarPagoContrato(string JsonDatos,string JsonDatosFinal, string Descripcion,string FechaEmision,string FechaMesContrato,int IdIva)
+        {
+            var responseResul = await _repository.InsertPagoContrato(JsonDatos, JsonDatosFinal, Descripcion, 1,1, FechaEmision, FechaMesContrato, IdIva);
             return responseResul.Select(s => new Generica
             {
                 valor1 = s.valor1,
@@ -455,9 +584,43 @@ namespace WebAppConexion.Controllers
         }
 
         [HttpGet("[action]")]
-        public async Task<IEnumerable<Generica>> GuardaCobrarContrato(string JsonDatos, string JsonDatosFinal, string Descripcion,string TipoTransaccion,decimal ValorProceso)
+        public async Task<IEnumerable<Generica>> GuardarNotaDeCredito(string JsonDatos, string JsonDatosFinal, string Descripcion, string FechaEmision,int IdActivar, int IdIva)
         {
-            var responseResul = await _repository.InsertCobroContrato(JsonDatos, JsonDatosFinal, Descripcion, TipoTransaccion.Trim(), ValorProceso, 1, 1);
+            var responseResul = await _repository.InsertNotaDeCredito(JsonDatos, JsonDatosFinal, Descripcion, 1, 1, IdActivar, FechaEmision,  IdIva);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarFacturaServicio(string JsonDatos, string JsonDatosFinal, string Descripcion, string FechaEmision)
+        {
+            var responseResul = await _repository.InsertFacturaServicio(JsonDatos, JsonDatosFinal, Descripcion, 1, 1, FechaEmision);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<Generica>> GuardarLiquidacion(string JsonDatos, string JsonDatosFinal, string jsonReembolso, string jsonAsiento, string Descripcion, int Estado, int Tipo, string FechaEmision)
+        {
+            var responseResul = await _repository.InsertLiquidacion(JsonDatos, JsonDatosFinal, jsonReembolso, jsonAsiento, Descripcion, 1, 1, FechaEmision);
+            return responseResul.Select(s => new Generica
+            {
+                valor1 = s.valor1,
+                valor2 = s.valor2
+            });
+        }
+
+
+        [HttpGet("[action]")]
+        public async Task<IEnumerable<Generica>> GuardaCobrarContrato(string JsonDatos, string JsonDatosFinal, string Descripcion,string TipoTransaccion,decimal ValorProceso,string NumDocumento)
+        {
+            var responseResul = await _repository.InsertCobroContrato(JsonDatos, JsonDatosFinal, Descripcion, TipoTransaccion.Trim(), ValorProceso, 1, 1, NumDocumento);
             return responseResul.Select(s => new Generica
             {
                 valor1 = s.valor1,
@@ -496,9 +659,6 @@ namespace WebAppConexion.Controllers
         {
             var response = await _repository.GetByMostrarFacturaPorCobrar(IdContrato, Tipo);
 
-            #region generar archivo
-            #endregion
-
             return response.Select(s => new FacturaContratoViewModel
             {
                 ValorBruto = s.ValorBruto,
@@ -517,9 +677,6 @@ namespace WebAppConexion.Controllers
         public async Task<IEnumerable<FacturaContratoViewModel>> MostrarFacturaPorCobrarFecha(Int64 IdMedio,DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
         {
             var response = await _repository.GetByMostrarFacturaPorCobrarFecha(IdMedio, FechaInicio, FechaFinal, Tipo);
-
-            #region generar archivo
-            #endregion
 
             return response.Select(s => new FacturaContratoViewModel
             {
@@ -542,6 +699,12 @@ namespace WebAppConexion.Controllers
                 ValorIva = s.ValorIva,
                 Iva = s.Iva,
                 Total = s.ValorCobrar + s.Iva,
+                TotalRetencion =s.ValorRenta + s.ValorIva,
+                RutaRetencion = s.RutaRetencion,
+                RutaRetencionPDF =s.RutaRetencionPDF,
+                RutaFacturaPDF = s.RutaFacturaPDF,
+                RutaFacturaXML = s.RutaFacturaXML,
+                NumRetencion = s.NumRetencion,
             });
 
         }

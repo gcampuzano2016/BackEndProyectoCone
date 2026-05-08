@@ -3,14 +3,11 @@ using Conexion.AccesoDatos.Repository.CArchivo;
 using Conexion.Entidad.Administracion;
 using Conexion.Entidad.Negocio;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -31,6 +28,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             {
                 using (SqlCommand cmd = new SqlCommand("MostrarReporteGeneral", sql))
                 {
+                    cmd.CommandTimeout = 60 * 5;
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
                     cmd.Parameters.Add(new SqlParameter("@Anio", Anio));
@@ -61,23 +59,23 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         {
             string resul = "";
             int Valor = 0;
-            if (NumDocumento.Contains("-"))
-            {
-                resul = NumDocumento.Substring(8, 9);
-                Valor = Convert.ToInt32(resul);
-            }
-            else
-            {
-                resul = NumDocumento;
-                Valor = Convert.ToInt32(resul);
-            }
+            //if (NumDocumento.Contains("-"))
+            //{
+            //    resul = NumDocumento.Substring(8, 9);
+            //    Valor = Convert.ToInt32(resul);
+            //}
+            //else
+            //{
+            //    resul = NumDocumento;
+            //    Valor = Convert.ToInt32(resul);
+            //}
 
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
                 using (SqlCommand cmd = new SqlCommand("ReporteDetallePagarCobrar", sql))
                 {
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                    cmd.Parameters.Add(new SqlParameter("@NumDocumento", Valor.ToString()));
+                    cmd.Parameters.Add(new SqlParameter("@NumDocumento", NumDocumento));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<ResumenCtasPagarCobrar>();
                     await sql.OpenAsync();
@@ -151,7 +149,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -178,9 +176,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -192,6 +195,93 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                     return response2;
                 
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteGeneralArchivoBase64(Int64 IdMedio, int Anio, int Tipo, string TipoDocumento)
+        {
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteGeneral", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@Anio", Anio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ReporteGeneral>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            if (Tipo == 1)
+                            {
+                                response.Add(MapToReporteGeneral(reader));
+                            }
+                            else if (Tipo == 2)
+                            {
+                                response.Add(MapToReporteGeneral2(reader));
+                            }
+                        }
+                    }
+
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+                    foreach (ReporteGeneral s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.Descripcion;
+                        ws.Cell("B" + cont2.ToString()).Value = s.NumeroConex;
+                        ws.Cell("C" + cont2.ToString()).Value = s.Enero;
+                        ws.Cell("D" + cont2.ToString()).Value = s.Febrero;
+                        ws.Cell("E" + cont2.ToString()).Value = s.Marzo;
+                        ws.Cell("F" + cont2.ToString()).Value = s.Abril;
+                        ws.Cell("G" + cont2.ToString()).Value = s.Mayo;
+                        ws.Cell("H" + cont2.ToString()).Value = s.Junio;
+                        ws.Cell("I" + cont2.ToString()).Value = s.Julio;
+                        ws.Cell("J" + cont2.ToString()).Value = s.Agosto;
+                        ws.Cell("K" + cont2.ToString()).Value = s.Septiembre;
+                        ws.Cell("L" + cont2.ToString()).Value = s.Octubre;
+                        ws.Cell("M" + cont2.ToString()).Value = s.Noviembre;
+                        ws.Cell("N" + cont2.ToString()).Value = s.Diciembre;
+                        ws.Cell("O" + cont2.ToString()).Value = s.Total;
+                        cont2++;
+                    }
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+
                 }
             }
         }
@@ -214,7 +304,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
 
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
             ent = cargar1.ConsultarATS(FechaInicio, FechaFinal, Tipo);
 
             string ruta = archivo.RutaArchivo;
@@ -234,7 +324,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             return response2;
         }
 
-        public string GenerarXml(DataSet data,string rutaDocumento)
+        public string GenerarXml(DataSet data, string rutaDocumento)
         {
             string ruta = rutaDocumento;
             XmlDocument xml = new XmlDocument();
@@ -278,7 +368,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                     if (data.Tables[1].Columns[i].ColumnName.ToString() == "pagoLocExt" || data.Tables[1].Columns[i].ColumnName.ToString() == "paisEfecPago" || data.Tables[1].Columns[i].ColumnName.ToString() == "aplicConvDobTrib" || data.Tables[1].Columns[i].ColumnName.ToString() == "pagExtSujRetNorLeg" || data.Tables[1].Columns[i].ColumnName.ToString() == "pagoRegFis")
                     {
-                        if(Bandera == false)
+                        if (Bandera == false)
                         {
                             elementopagoExterior = xml.CreateElement(String.Empty, "pagoExterior", String.Empty);
                             elementoDetalleCompras.AppendChild(elementopagoExterior);
@@ -351,7 +441,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             #endregion
 
             #region VENTAS
-            if(data.Tables[4].Rows.Count > 0)
+            if (data.Tables[4].Rows.Count > 0)
             {
                 XmlElement elementoVentas = xml.CreateElement(string.Empty, "ventas", string.Empty);
                 elementoLista.AppendChild(elementoVentas);
@@ -392,12 +482,12 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                             dtResp = Resul.ToTable("UniqueLastNames", true, "formapago");
                             if (dtResp.Rows.Count > 0)
                             {
-                                    elementoFormaPago = xml.CreateElement(string.Empty, "formasDePago", string.Empty);
-                                    elementoDetalleVentas.AppendChild(elementoFormaPago);
-                                    elementoVenta = xml.CreateElement(string.Empty, "formaPago", string.Empty);
-                                    text1 = xml.CreateTextNode(dtResp.Rows[0][0].ToString().Trim());
-                                    elementoVenta.AppendChild(text1);
-                                    elementoFormaPago.AppendChild(elementoVenta);
+                                elementoFormaPago = xml.CreateElement(string.Empty, "formasDePago", string.Empty);
+                                elementoDetalleVentas.AppendChild(elementoFormaPago);
+                                elementoVenta = xml.CreateElement(string.Empty, "formaPago", string.Empty);
+                                text1 = xml.CreateTextNode(dtResp.Rows[0][0].ToString().Trim());
+                                elementoVenta.AppendChild(text1);
+                                elementoFormaPago.AppendChild(elementoVenta);
                             }
                             Valor = 0;
                         }
@@ -423,6 +513,27 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 }
                 #endregion
 
+            }
+            #endregion
+
+            #region ESXPORTACION
+            if (data.Tables[7].Rows.Count > 0)
+            {
+                XmlElement elementoExportacion = xml.CreateElement(string.Empty, "exportaciones", string.Empty);
+                elementoLista.AppendChild(elementoExportacion);
+                for (int x = 0; x <= Convert.ToInt32(data.Tables[7].Rows.Count) - 1; x++)
+                {
+                    XmlElement elementodetalleExportaciones = xml.CreateElement(string.Empty, "detalleExportaciones", string.Empty);
+                    elementoExportacion.AppendChild(elementodetalleExportaciones);
+                    for (int i = 0; i <= Convert.ToInt32(data.Tables[7].Columns.Count) - 1; i++)
+                    {
+                        XmlElement elemento = xml.CreateElement(string.Empty, data.Tables[7].Columns[i].ColumnName.ToString(), string.Empty);
+                        XmlText text3 = null;
+                        text3 = xml.CreateTextNode(data.Tables[7].Rows[x][i].ToString().Trim());
+                        elemento.AppendChild(text3);
+                        elementodetalleExportaciones.AppendChild(elemento);
+                    }
+                }
             }
             #endregion
 
@@ -460,7 +571,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -484,9 +595,303 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+
+                    return response2;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByConsultaImpuestoIvaBase64(DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("Consulta_ImpuestoIva", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ImpuestoIva>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToImpuestoIva(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento, 0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 3;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+                    foreach (ImpuestoIva s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = "'" + s.ruc;
+                        ws.Cell("B" + cont2.ToString()).Value = s.fechaemision;
+                        ws.Cell("C" + cont2.ToString()).Value = s.serie;
+                        ws.Cell("D" + cont2.ToString()).Value = "'" + s.secuencial;
+                        ws.Cell("E" + cont2.ToString()).Value = "'" + s.claveacceso;
+                        ws.Cell("F" + cont2.ToString()).Value = s.totalfactura;
+                        ws.Cell("G" + cont2.ToString()).Value = s.porcentaje;
+                        ws.Cell("H" + cont2.ToString()).Value = s.valorRetenido;
+                        cont2++;
+                    }
+
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+
+                    return response2;
+                }
+            }
+        }
+
+        private ImpuestoIva MapToImpuestoIva(SqlDataReader reader)
+        {
+            return new ImpuestoIva()
+            {
+                ruc = reader["ruc"].ToString(),
+                fechaemision = reader["fechaemision"].ToString(),
+                serie = reader["serie"].ToString(),
+                secuencial = reader["secuencial"].ToString(),
+                claveacceso = reader["claveacceso"].ToString(),
+                totalfactura = (decimal)reader["totalfactura"],
+                porcentaje = reader["porcentaje"].ToString(),
+                valorRetenido = (decimal)reader["valorRetenido"],
+            };
+        }
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteEstadoResultadosArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteEstadoResultados", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<EstadoFinanciero>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToEstadoResultados(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 3;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+
+                    ws.Cell("A1").Value = FechaFinal;
+                    ws.Cell("A1").Style.Font.Bold = true;
+                    if(Tipo == 2)
+                    {
+                        foreach (EstadoFinanciero s in response)
+                        {
+                            ws.Cell("A" + cont2.ToString()).Value = s.CODIGO;
+
+                            if (s.CUENTA == "TOTAL ACTIVO" || s.CUENTA == "TOTAL PASIVO" || s.CUENTA== "TOTAL PATRIMONIO" || s.CUENTA == "TOTAL PASIVO Y PATRIMONIO ======>")
+                            {
+                                ws.Cell("B" + cont2.ToString()).Value = s.CUENTA;
+                                ws.Cell("B" + cont2.ToString()).Style.Font.Bold = true;
+                                ws.Cell("B" + cont2.ToString()).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
+                            }
+                            else
+                            {
+                                ws.Cell("B" + cont2.ToString()).Value = s.CUENTA;
+
+                            }
+                            ws.Cell("C" + cont2.ToString()).Value = s.PARCIAL;
+
+                            if (s.CUENTA == "TOTAL ACTIVO" || s.CUENTA == "TOTAL PASIVO" || s.CUENTA == "TOTAL PATRIMONIO" || s.CUENTA == "TOTAL PASIVO Y PATRIMONIO ======>")
+                            {
+                                ws.Cell("D" + cont2.ToString()).Value = s.SUBTOTAL;
+                                ws.Cell("D" + cont2.ToString()).Style.Font.Bold = true;
+                            }
+                            else
+                            {
+                                ws.Cell("D" + cont2.ToString()).Value = s.SUBTOTAL;
+                            }
+                            //ws.Cell("E" + cont2.ToString()).Value = s.TOTAL;
+                            cont2++;
+                        }
+                    }
+                    else
+                    {
+                        foreach (EstadoFinanciero s in response)
+                        {
+
+                            ws.Cell("A" + cont2.ToString()).Value = s.CODIGO;
+                            if (s.CUENTA == "TOTAL INGRESOS -->" || s.CUENTA == "TOTAL COSTOS -->" || s.CUENTA == "TOTAL GASTOS -->" || s.CUENTA == "UTILIDAD ======>")
+                            {
+                                ws.Cell("B" + cont2.ToString()).Value = s.CUENTA;
+                                ws.Cell("B" + cont2.ToString()).Style.Font.Bold = true;
+                                ws.Cell("B" + cont2.ToString()).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
+                            }
+                            else
+                            {
+                                ws.Cell("B" + cont2.ToString()).Value = s.CUENTA;
+                            }
+                            ws.Cell("C" + cont2.ToString()).Value = s.PARCIAL;
+                            if (s.CUENTA == "TOTAL INGRESOS -->" || s.CUENTA == "TOTAL COSTOS -->" || s.CUENTA == "TOTAL GASTOS -->" || s.CUENTA == "UTILIDAD ======>")
+                            {
+                                ws.Cell("D" + cont2.ToString()).Value = s.SUBTOTAL;
+                                ws.Cell("D" + cont2.ToString()).Style.Font.Bold = true;
+                            }
+                            else
+                            {
+                                ws.Cell("D" + cont2.ToString()).Value = s.SUBTOTAL;
+                            }
+                            //ws.Cell("E" + cont2.ToString()).Value = s.TOTAL;
+                            cont2++;
+                        }
+                    }
+
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+
+                    return response2;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarProveedorArchivoBase64(Int64 IdProveedor, Int32 Tipo, string TipoDocumento)
+        {
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarProveedor", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdProveedor", IdProveedor));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<Proveedor>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToProveedor(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+
+                    //ws.Cell("A1").Value = FechaFinal;
+                    //ws.Cell("A1").Style.Font.Bold = true;
+
+                    foreach (Proveedor s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.Nombre;
+                        ws.Cell("B" + cont2.ToString()).Value = s.NombreComercial;
+                        ws.Cell("C" + cont2.ToString()).Value = "'"+s.RuCedula;
+                        ws.Cell("D" + cont2.ToString()).Value = s.Direccion;
+                        ws.Cell("E" + cont2.ToString()).Value = s.Telefono;
+                        ws.Cell("F" + cont2.ToString()).Value = s.CodContable;
+                        ws.Cell("G" + cont2.ToString()).Value = s.Descripcion;
+                        cont2++;
+                    }
+
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -586,7 +991,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -613,11 +1018,15 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
-
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
 
                     generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
@@ -658,7 +1067,37 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
-        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteFacturasCobradasArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo,string TipoDocumento)
+        public async Task<IEnumerable<ConsumoPautas>> GetByMostrarReporteConsumo(Int64 IdMedio,Int64 IdEmpleado,string FechaInicio,string FechaFinal,string NumConex ,Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteConsumo", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@NumConex", NumConex));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ConsumoPautas>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToReporteConsumoPautas(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteFacturasCobradasArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
         {
 
             var response2 = new List<CargarArchivoBase64>();
@@ -688,7 +1127,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -711,12 +1150,18 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         ws.Cell("I" + cont2.ToString()).Value = s.Comision;
                         ws.Cell("J" + cont2.ToString()).Value = s.Vendedor;
                         ws.Cell("K" + cont2.ToString()).Value = s.EstadoComision;
+                        ws.Cell("L" + cont2.ToString()).Value = s.FechaCobroFactura;
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -731,6 +1176,224 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteConsumoArchivoBase64(Int64 IdMedio, Int64 IdEmpleado, string FechaInicio, string FechaFinal, string NumConex, Int32 Tipo, string TipoDocumento)
+        {
+
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteConsumo", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@NumConex", NumConex));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ConsumoPautas>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToReporteConsumoPautas(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+
+                    foreach (ConsumoPautas s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.NumContrato;
+                        ws.Cell("B" + cont2.ToString()).Value = s.Anunciante;
+                        ws.Cell("C" + cont2.ToString()).Value = s.TotalNegocio;
+                        ws.Cell("D" + cont2.ToString()).Value = s.TotalSegundos;
+                        ws.Cell("E" + cont2.ToString()).Value = s.TotalNegocioConsumido;
+                        ws.Cell("F" + cont2.ToString()).Value = s.TotalSegundosConsumido;
+                        ws.Cell("G" + cont2.ToString()).Value = s.SaldoTotalNegocio;
+                        ws.Cell("H" + cont2.ToString()).Value = s.SaldoTotalSegundos;
+                        cont2++;
+                    }
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarPlanCuentasSaldoFinalCeroBase64(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo, string TipoDocumento)
+        {
+
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarPlanCuentasSaldoFinalCero", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<PlanCuenta>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToPlanCuentas(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+
+                    foreach (PlanCuenta s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.Codigo;
+                        ws.Cell("B" + cont2.ToString()).Value = s.Descripcion;
+                        ws.Cell("C" + cont2.ToString()).Value = s.SaldoInicial;
+                        ws.Cell("D" + cont2.ToString()).Value = s.SaldoFinal;                     
+                        cont2++;
+                    }
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarPlanCuentasSaldoFinalBase64(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo, string TipoDocumento)
+        {
+
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarPlanCuentasSaldoFinal", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<PlanCuenta>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToPlanCuentas(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+
+                    foreach (PlanCuenta s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.Codigo;
+                        ws.Cell("B" + cont2.ToString()).Value = s.Descripcion;
+                        ws.Cell("C" + cont2.ToString()).Value = s.SaldoInicial;
+                        ws.Cell("D" + cont2.ToString()).Value = s.SaldoFinal;
+                        cont2++;
+                    }
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+                }
+            }
+        }
 
         public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteEstadoCuentaArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
         {
@@ -763,7 +1426,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, datosDoc[0]);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, datosDoc[0],0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -792,9 +1455,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -807,6 +1475,149 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     return response2;
                 }
             }
+        }
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteEstadoCuentaLibroMayorArchivoBase64(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        {
+            string[] datosDoc;
+            datosDoc = TipoDocumento.Split(';');
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteEstadoCuentaLibroMayor", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<LibroMayor>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToLibroMayor(reader));
+                        }
+                    }
+
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, datosDoc[0],0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 3;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+
+                    ws.Cell("A1").Value = datosDoc[1];
+                    ws.Cell("A1").Style.Font.Bold = true;
+                    ws.Cell("B1").Value = datosDoc[2];
+                    ws.Cell("B1").Style.Font.Bold = true;
+                   
+                    foreach (LibroMayor s in response)
+                    {
+
+                        ws.Cell("A" + cont2.ToString()).Value = s.FECHA;
+                        
+                        if (s.BANDERA == "PINTAR")
+                        {
+                            ws.Cell("B" + cont2.ToString()).Value = s.CONCEPTO;
+                            ws.Cell("B" + cont2.ToString()).Style.Font.Bold = true;
+                        }
+                        else
+                        {
+                            ws.Cell("B" + cont2.ToString()).Value = s.CONCEPTO;
+                        }
+
+                        ws.Cell("C" + cont2.ToString()).Value = s.NUMDOCUMENTO;
+                        ws.Cell("D" + cont2.ToString()).Value = "'"+s.RUCEDULA;
+                        ws.Cell("E" + cont2.ToString()).Value = s.BENEFICIARIO;
+
+                        if (s.CONCEPTO == "TOTAL:")
+                        {
+                            ws.Cell("B" + cont2.ToString()).Value = s.CONCEPTO;
+                            ws.Cell("B" + cont2.ToString()).Style.Font.Bold = true;
+                            ws.Cell("F" + cont2.ToString()).Value = s.DEBITO;
+                            ws.Cell("F" + cont2.ToString()).Style.Font.Bold = true;
+                            ws.Cell("G" + cont2.ToString()).Value = s.CREDITO;
+                            ws.Cell("G" + cont2.ToString()).Style.Font.Bold = true;
+                        }
+                        else
+                        {
+                            ws.Cell("B" + cont2.ToString()).Value = s.CONCEPTO;
+                            ws.Cell("F" + cont2.ToString()).Value = s.DEBITO;
+                            ws.Cell("G" + cont2.ToString()).Value = s.CREDITO;
+                        }
+
+                        if (s.CONCEPTO == "TOTAL MOVIMIENTOS")
+                        {
+                            ws.Cell("F" + cont2.ToString()).Value = s.DEBITO;
+                            ws.Cell("F" + cont2.ToString()).Style.Font.Bold = true;
+                            ws.Cell("G" + cont2.ToString()).Value = s.CREDITO;
+                            ws.Cell("G" + cont2.ToString()).Style.Font.Bold = true;
+                        }
+                        else
+                        {
+                            ws.Cell("F" + cont2.ToString()).Value = s.DEBITO;
+                            ws.Cell("G" + cont2.ToString()).Value = s.CREDITO;
+                        }
+
+                        if (s.BANDERA == "PINTAR")
+                        {
+                            ws.Cell("H" + cont2.ToString()).Value = s.SALDO;
+                            ws.Cell("H" + cont2.ToString()).Style.Font.Bold = true;
+                        }
+                        else
+                        {
+                            ws.Cell("H" + cont2.ToString()).Value = s.SALDO;
+                        }
+                        cont2++;
+                    }
+
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
+
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+                }
+            }
+        }
+
+        private LibroMayor MapToLibroMayor(SqlDataReader reader)
+        {
+            return new LibroMayor()
+            {
+                FECHA = reader["FECHA"].ToString(),
+                CONCEPTO = reader["CONCEPTO"].ToString(),
+                NUMDOCUMENTO = reader["NUMDOCUMENTO"].ToString(),
+                RUCEDULA = reader["RUCEDULA"].ToString(),
+                BENEFICIARIO = reader["BENEFICIARIO"].ToString(),
+                DEBITO = reader["DEBITO"].ToString(),
+                CREDITO = reader["CREDITO"].ToString(),
+                SALDO = reader["SALDO"].ToString(),
+                BANDERA = reader["BANDERA"].ToString(),
+            };
         }
 
         private EstadoCuenta MapToEstadoCuenta(SqlDataReader reader)
@@ -824,7 +1635,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             };
         }
 
-        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarFacturaPorPagarFechaArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento)
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarFacturaPorPagarFechaArchivoBase64(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento, string TipoDocumentos)
         {
 
             var response2 = new List<CargarArchivoBase64>();
@@ -837,10 +1648,12 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             {
                 using (SqlCommand cmd = new SqlCommand("MostrarFacturaPorPagarFecha", sql))
                 {
+                    cmd.CommandTimeout = 60 * 5;
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
                     cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
                     cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@TipoDocumento", TipoDocumentos));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<CuentasPorPagar>();
                     await sql.OpenAsync();
@@ -854,7 +1667,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -865,7 +1678,10 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     decimal SaldoTotal = 0;
                     foreach (CuentasPorPagar s in response)
                     {
-                        SaldoTotal=SaldoTotal+ s.Saldo;
+                        if (s.RazonSocial.Trim() != "TOTALES:")
+                        {
+                            SaldoTotal = SaldoTotal + s.Saldo;
+                        }
                     }
 
                     ws.Cell("D1").Value = FechaFinal;
@@ -888,14 +1704,26 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
 
-                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    if(Tipo == 1)
+                    {
+                        generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    }
+                    else if(Tipo == 2)
+                    {
+                        generica.NombreArchivo = archivo.NombreArchivoSalida +"_a_la_fecha" + "_" + fecha + archivo.Extencion;
+                    }
                     generica.ArchivoBase64 = archivoBase64;
 
                     response2.Add(generica);
@@ -934,7 +1762,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -960,9 +1788,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -1006,7 +1839,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         }
                     }
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -1035,23 +1868,39 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         ws.Cell("A" + cont2.ToString()).Value = s.NumDocumento;
                         ws.Cell("B" + cont2.ToString()).Value = s.NombreMedio;
                         ws.Cell("C" + cont2.ToString()).Value = s.ValorCobrar;
-                        ws.Cell("D" + cont2.ToString()).Value = s.Saldo;
-                        ws.Cell("E" + cont2.ToString()).Value = s.EstadoPago;
-                        ws.Cell("F" + cont2.ToString()).Value = s.FechaRegistro;
-                        ws.Cell("G" + cont2.ToString()).Value = s.Anunciante;
-                        ws.Cell("H" + cont2.ToString()).Value = s.Agencia;
-                        ws.Cell("I" + cont2.ToString()).Value = s.NumContrato;
+                        ws.Cell("D" + cont2.ToString()).Value = s.Iva;
+                        ws.Cell("E" + cont2.ToString()).Value = s.ValorCobrar + s.Iva;
+                        ws.Cell("F" + cont2.ToString()).Value = s.ValorRenta;
+                        ws.Cell("G" + cont2.ToString()).Value = s.ValorIva; 
+                        ws.Cell("H" + cont2.ToString()).Value = s.ValorRenta + s.ValorIva;
+                        ws.Cell("I" + cont2.ToString()).Value = (s.ValorCobrar + s.Iva)-(s.ValorRenta + s.ValorIva);
+                        ws.Cell("J" + cont2.ToString()).Value = s.Saldo;
+                        ws.Cell("K" + cont2.ToString()).Value = s.EstadoPago;
+                        ws.Cell("L" + cont2.ToString()).Value = s.FechaRegistro;
+                        ws.Cell("M" + cont2.ToString()).Value = s.Anunciante;
+                        ws.Cell("N" + cont2.ToString()).Value = s.Agencia;
+                        ws.Cell("O" + cont2.ToString()).Value = s.NumContrato;
                         cont2++;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
-
-                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    if(Tipo == 2){
+                        generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    }
+                    else if(Tipo == 3)
+                    {
+                        generica.NombreArchivo = archivo.NombreArchivoSalida + "_a_la_Fecha" + "_" + fecha + archivo.Extencion;
+                    }
                     generica.ArchivoBase64 = archivoBase64;
 
                     response2.Add(generica);
@@ -1082,6 +1931,9 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Anunciante = reader["Anunciante"].ToString(),
                 Agencia = reader["Agencia"].ToString(),
                 NumContrato = reader["NumContrato"].ToString(),
+                ValorRenta = (decimal)reader["ValorRenta"],
+                ValorIva = (decimal)reader["ValorIva"],
+                Iva = (decimal)reader["Iva"],
             };
         }
 
@@ -1139,7 +1991,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Abril = reader["Abril"].ToString(),
                 Mayo = reader["Mayo"].ToString(),
                 Junio = reader["Junio"].ToString(),
-                Julio = reader["Junio"].ToString(),
+                Julio = reader["Julio"].ToString(),
                 Agosto = reader["Agosto"].ToString(),
                 Septiembre = reader["Septiembre"].ToString(),
                 Octubre = reader["Octubre"].ToString(),
@@ -1183,6 +2035,40 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             };
         }
 
+        private EstadoFinanciero MapToEstadoResultados(SqlDataReader reader)
+        {
+            return new EstadoFinanciero()
+            {
+                CODIGO = reader["CODIGO"].ToString(),
+                CUENTA = reader["CUENTA"].ToString(),
+                PARCIAL = (decimal)reader["PARCIAL"],
+                SUBTOTAL = (decimal)reader["SUBTOTAL"],
+                TOTAL = (decimal)reader["TOTAL"],
+            };
+        }
+
+        private Proveedor MapToProveedor(SqlDataReader reader)
+        {
+            return new Proveedor()
+            {
+                IdProveedor = (Int64)reader["IdProveedor"],
+                IdPlanCuenta = (Int64)reader["IdPlanCuenta"],
+                Descripcion = reader["Descripcion"].ToString(),
+                Nombre = reader["Nombre"].ToString(),
+                NombreComercial = reader["NombreComercial"].ToString(),
+                RuCedula = reader["RuCedula"].ToString(),
+                Direccion = reader["Direccion"].ToString(),
+                Telefono = reader["Telefono"].ToString(),
+                Email = reader["Email"].ToString(),
+                CodContable = reader["CodContable"].ToString(),
+                AutorizacionSri = reader["AutorizacionSri"].ToString(),
+                FechaAutorizacion = (DateTime)reader["FechaAutorizacion"],
+                FechaCaducidad = (DateTime)reader["FechaCaducidad"],
+                Estado = (Int32)reader["Estado"],
+                Retencion = reader["Retencion"].ToString(),
+            };
+        }
+
         private BalanceComprobacion MapToBalanceComprobacion(SqlDataReader reader)
         {
             return new BalanceComprobacion()
@@ -1208,7 +2094,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Abril = reader["Abril"].ToString(),
                 Mayo = reader["Mayo"].ToString(),
                 Junio = reader["Junio"].ToString(),
-                Julio = reader["Junio"].ToString(),
+                Julio = reader["Julio"].ToString(),
                 Agosto = reader["Agosto"].ToString(),
                 Septiembre = reader["Septiembre"].ToString(),
                 Octubre = reader["Octubre"].ToString(),
@@ -1237,6 +2123,21 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             };
         }
 
+        private PlanCuenta MapToPlanCuentas(SqlDataReader reader)
+        {
+            return new PlanCuenta()
+            {
+                IdPlanCuenta = (Int64)reader["IdPlanCuenta"],
+                Codigo = reader["Codigo"].ToString(),
+                Descripcion = reader["Descripcion"].ToString(),
+                SaldoInicial = (decimal)reader["SaldoInicial"],
+                Debe = (decimal)reader["Debe"],
+                Haber = (decimal)reader["Haber"],
+                SaldoFinal = (decimal)reader["SaldoFinal"],
+                Estado = (Int32)reader["Estado"],
+            };
+        }
+
         private CobrosFacturas MapToReporteCobrosFacturas(SqlDataReader reader)
         {
             return new CobrosFacturas()
@@ -1252,6 +2153,22 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Comision = (decimal)reader["Comision"],
                 Vendedor = reader["Vendedor"].ToString(),
                 EstadoComision = reader["EstadoComision"].ToString(),
+                FechaCobroFactura =(DateTime)reader["FechaCobroFactura"],
+            };
+        }
+
+        private ConsumoPautas MapToReporteConsumoPautas(SqlDataReader reader)
+        {
+            return new ConsumoPautas()
+            {
+                NumContrato = reader["NumContrato"].ToString(),
+                Anunciante = reader["Anunciante"].ToString(),
+                TotalNegocio = (decimal)reader["TotalNegocio"],
+                TotalSegundos = (decimal)reader["TotalSegundos"],
+                TotalNegocioConsumido = (decimal)reader["TotalNegocioConsumido"],
+                TotalSegundosConsumido = (decimal)reader["TotalSegundosConsumido"],
+                SaldoTotalNegocio = (decimal)reader["SaldoTotalNegocio"],
+                SaldoTotalSegundos = (decimal)reader["SaldoTotalSegundos"],
             };
         }
 
@@ -1261,6 +2178,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             {
                 using (SqlCommand cmd = new SqlCommand("MostrarReporteDiario", sql))
                 {
+                    cmd.CommandTimeout = 60 * 5;
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
                     cmd.Parameters.Add(new SqlParameter("@Anio", Anio));
@@ -1358,7 +2276,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         }
 
                         CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                        archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                        archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                         string ruta = archivo.RutaArchivo;
                         //VerErrores("ruta: " + ruta.ToString(), "Log", "Detalle", 1);
                         cargar.RutaArchivo = ruta + cargar.nombreArchivo;
@@ -1381,9 +2299,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                             ws.Cell("H" + cont2.ToString()).Value = s.E_MAIL_AGENCIA;
                             cont2++;
                         }
-                        wbook.SaveAs(rutaDocumentoResul);
-
-                        byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                        //wbook.SaveAs(rutaDocumentoResul);
+                        //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                        byte[] archivoBytes = null;
+                        using (var msA = new MemoryStream())
+                        {
+                            wbook.SaveAs(msA);
+                            archivoBytes = msA.ToArray();
+                        }
                         string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                         CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -1458,7 +2381,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -1477,9 +2400,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         ws.Cell("G" + cont2.ToString()).Value = s.Generico;                        
                         cont2++;
                     }
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -1505,6 +2433,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             {
                 using (SqlCommand cmd = new SqlCommand("MostrarReporteDiario", sql))
                 {
+                    cmd.CommandTimeout = 60 * 5;
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
                     cmd.Parameters.Add(new SqlParameter("@Anio", Anio));
@@ -1522,7 +2451,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                     string ruta = archivo.RutaArchivo;
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
                     string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
@@ -1572,11 +2501,95 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         ws.Cell("X" + cont2.ToString()).Value = s.PAGADOALMEDIO;
                         ws.Cell("Y" + cont2.ToString()).Value = s.FACTXCONEX;
                         ws.Cell("Z" + cont2.ToString()).Value = s.XFACTCONEX;
+                        ws.Cell("AA" + cont2.ToString()).Value = s.SEGUNDAJE_DERECHO;
+                        ws.Cell("AB" + cont2.ToString()).Value = s.TOTAL_SEGUNDOS;
                         cont2++;
                     }
-                    wbook.SaveAs(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
+                    string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    CargarArchivoBase64 generica = new CargarArchivoBase64();
+
+                    generica.NombreArchivo = archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    generica.ArchivoBase64 = archivoBase64;
+
+                    response2.Add(generica);
+
+                    return response2;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<CargarArchivoBase64>> GetByMostrarReporteSegundoArchivoBase64(Int64 IdMedio, int Anio, int Tipo, string TipoDocumento)
+        {
+            var response2 = new List<CargarArchivoBase64>();
+            string fecha;
+            fecha = DateTime.Now.ToString().Replace("/", "-").Replace(" ", "_").Replace(":", "_");
+            CargarArchivo cargar = new CargarArchivo();
+            PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteDiario", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdMedio", IdMedio));
+                    cmd.Parameters.Add(new SqlParameter("@Anio", Anio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<ReporteDiario>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToReporteDiario(reader));
+                        }
+                    }
+                    CargarXLSX cargar1 = new CargarXLSX(_connectionString);
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
+                    string ruta = archivo.RutaArchivo;
+                    cargar.RutaArchivo = ruta + cargar.nombreArchivo;
+                    string rutaDocumento = archivo.RutaArchivo + archivo.NombreArchivo + archivo.Extencion;
+                    string rutaDocumentoResul = archivo.RutaArchivo + archivo.NombreArchivoSalida + "_" + fecha + archivo.Extencion;
+                    int cont2 = 2;
+                    using var wbook = new XLWorkbook(rutaDocumento);
+                    var ws = wbook.Worksheet(1);
+                    foreach (ReporteDiario s in response)
+                    {
+                        ws.Cell("A" + cont2.ToString()).Value = s.FECHA;
+                        ws.Cell("B" + cont2.ToString()).Value = s.NUMCONTRAT;
+                        ws.Cell("C" + cont2.ToString()).Value = s.NUMERORDEN;
+                        ws.Cell("D" + cont2.ToString()).Value = s.DESDE;
+                        ws.Cell("E" + cont2.ToString()).Value = s.HASTA;
+                        ws.Cell("F" + cont2.ToString()).Value = s.ANUNCIANTE;
+                        ws.Cell("G" + cont2.ToString()).Value = s.MEDIOPUBLI;
+                        ws.Cell("H" + cont2.ToString()).Value = s.AGENCIA;
+                        ws.Cell("I" + cont2.ToString()).Value = s.RUCVENDOR;
+                        ws.Cell("J" + cont2.ToString()).Value = s.CANTSPOTS;
+                        ws.Cell("K" + cont2.ToString()).Value = s.CANAL;
+                        ws.Cell("L" + cont2.ToString()).Value = s.PROGRAMA;
+                        ws.Cell("M" + cont2.ToString()).Value = s.DERECHO;
+                        ws.Cell("N" + cont2.ToString()).Value = s.FRANJA;                       
+                        ws.Cell("O" + cont2.ToString()).Value = s.SEGUNDAJE_DERECHO;
+                        ws.Cell("P" + cont2.ToString()).Value = s.TOTAL_SEGUNDOS;
+                        cont2++;
+                    }
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     CargarArchivoBase64 generica = new CargarArchivoBase64();
@@ -1619,7 +2632,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     }
 
                     CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "ROL DE PAGO");
+                    archivo = cargar1.MostrarCargaArhivoConfig(0, 0, "ROL DE PAGO",0);
                     string ruta = archivo.RutaArchivo;
                     var response3 = new List<RolPagos>();
                     cargar.RutaArchivo = ruta + cargar.nombreArchivo;
@@ -1668,11 +2681,19 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                         ws.Cell("D16").Value = s.FechaPago;
                         ws.Cell("D16").Style.Font.Bold = true;
+
+                        ws.Cell("D35").Value = s.Banco ;
+                        ws.Cell("D35").Style.Font.Bold = true;
                     }
 
-                    wbook.SaveAs(rutaDocumentoResul);
-
-                    byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    //wbook.SaveAs(rutaDocumentoResul);
+                    //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                    byte[] archivoBytes = null;
+                    using (var msA = new MemoryStream())
+                    {
+                        wbook.SaveAs(msA);
+                        archivoBytes = msA.ToArray();
+                    }
                     string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                     RolPagos generica = new RolPagos();
@@ -1726,7 +2747,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             try
             {
                 CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-                archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento);
+                archivo = cargar1.MostrarCargaArhivoConfig(0, 0, TipoDocumento,0);
                 string ruta = archivo.RutaArchivo;
                 var response2 = new List<Generica>();
                 cargar.RutaArchivo = ruta + cargar.nombreArchivo;
@@ -1805,9 +2826,14 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 ws.Cell("D16").Value = datosNom[2];
                 ws.Cell("D16").Style.Font.Bold = true;
 
-                wbook.SaveAs(rutaDocumentoResul);
-
-                byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                //wbook.SaveAs(rutaDocumentoResul);
+                //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                byte[] archivoBytes = null;
+                using (var msA = new MemoryStream())
+                {
+                    wbook.SaveAs(msA);
+                    archivoBytes = msA.ToArray();
+                }
                 string archivoBase64 = Convert.ToBase64String(archivoBytes);
 
                 RolPagos pagos = new RolPagos();
@@ -1840,35 +2866,44 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         }
         private ReporteDiario MapToReporteDiario(SqlDataReader reader)
         {
-            return new ReporteDiario()
-            {
-                FECHA = reader["FECHA"].ToString(),
-                NUMCONTRAT = reader["NUMCONTRAT"].ToString(),
-                NUMERORDEN = reader["NUMERORDEN"].ToString(),
-                DESDE = reader["DESDE"].ToString(),
-                HASTA = reader["HASTA"].ToString(),
-                ANUNCIANTE = reader["ANUNCIANTE"].ToString(),
-                MEDIOPUBLI = reader["MEDIOPUBLI"].ToString(),
-                AGENCIA = reader["AGENCIA"].ToString(),
-                RUCVENDOR = reader["RUCVENDOR"].ToString(),
-                CANTSPOTS = reader["CANTSPOTS"].ToString(),
-                CANAL = reader["CANAL"].ToString(),
-                PROGRAMA = reader["PROGRAMA"].ToString(),
-                DERECHO = reader["DERECHO"].ToString(),
-                FRANJA = reader["FRANJA"].ToString(),
-                PARCIAL = reader["PARCIAL"].ToString(),
-                VALORBRUTO = reader["VALORBRUTO"].ToString(),
-                COMISAGEN = reader["COMISAGEN"].ToString(),
-                VALORAGEN = reader["VALORAGEN"].ToString(),
-                VALOR = reader["VALOR"].ToString(),
-                COMISCONEX = reader["COMISCONEX"].ToString(),
-                VALORCONEX = reader["VALORCONEX"].ToString(),
-                FACTURADOPORMEDIO = reader["FACTURADOPORMEDIO"].ToString(),
-                CERTIFICADOPORMEDIO = reader["CERTIFICADOPORMEDIO"].ToString(),
-                PAGADOALMEDIO = reader["PAGADOALMEDIO"].ToString(),
-                FACTXCONEX = reader["FACTXCONEX"].ToString(),
-                XFACTCONEX = reader["XFACTCONEX"].ToString(),
-            };
+            //try
+            //{
+                return new ReporteDiario()
+                {
+                    FECHA = reader["FECHA"].ToString(),
+                    NUMCONTRAT = reader["NUMCONTRAT"].ToString(),
+                    NUMERORDEN = reader["NUMERORDEN"].ToString(),
+                    DESDE = reader["DESDE"].ToString(),
+                    HASTA = reader["HASTA"].ToString(),
+                    ANUNCIANTE = reader["ANUNCIANTE"].ToString(),
+                    MEDIOPUBLI = reader["MEDIOPUBLI"].ToString(),
+                    AGENCIA = reader["AGENCIA"].ToString(),
+                    RUCVENDOR = reader["RUCVENDOR"].ToString(),
+                    CANTSPOTS = reader["CANTSPOTS"].ToString(),
+                    CANAL = reader["CANAL"].ToString(),
+                    PROGRAMA = reader["PROGRAMA"].ToString(),
+                    DERECHO = reader["DERECHO"].ToString(),
+                    FRANJA = reader["FRANJA"].ToString(),
+                    PARCIAL = reader["PARCIAL"].ToString(),
+                    VALORBRUTO = reader["VALORBRUTO"].ToString(),
+                    COMISAGEN = reader["COMISAGEN"].ToString(),
+                    VALORAGEN = reader["VALORAGEN"].ToString(),
+                    VALOR = reader["VALOR"].ToString(),
+                    COMISCONEX = reader["COMISCONEX"].ToString(),
+                    VALORCONEX = reader["VALORCONEX"].ToString(),
+                    FACTURADOPORMEDIO = reader["FACTURADOPORMEDIO"].ToString(),
+                    CERTIFICADOPORMEDIO = reader["CERTIFICADOPORMEDIO"].ToString(),
+                    PAGADOALMEDIO = reader["PAGADOALMEDIO"].ToString(),
+                    FACTXCONEX = reader["FACTXCONEX"].ToString(),
+                    XFACTCONEX = reader["XFACTCONEX"].ToString(),
+                    SEGUNDAJE_DERECHO = reader["SEGUNDAJE_DERECHO"].ToString(),
+                    TOTAL_SEGUNDOS = reader["TOTAL_SEGUNDOS"].ToString(),
+                };
+            //}
+            //catch(Exception ex)
+            //{
+
+            //}
         }
 
         private ReporteRelacionMedios MapToReporteRelacionMedio(SqlDataReader reader)
@@ -1920,6 +2955,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 CadenaValores = reader["CadenaValores"].ToString(),
                 FechaPago =(DateTime)reader["FechaPago"],
                 ArchivoBase64 = reader["ArchivoBase64"].ToString(),
+                Banco = reader["Banco"].ToString(),
             };
         }
 
@@ -1927,7 +2963,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         {
             return new SeguimientoForeCast()
             {
-                IdForeCast = (Int64)reader["IdPagoRol"],
+                IdForeCast = (Int64)reader["IdForeCast"],
                 NombresApellidos = reader["NombresApellidos"].ToString(),
                 FechaSeguimiento = reader["FechaSeguimiento"].ToString(),
                 Seguimientollamada = reader["Seguimientollamada"].ToString(),

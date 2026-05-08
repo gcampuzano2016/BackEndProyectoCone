@@ -52,6 +52,32 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
+        public async Task<IEnumerable<Generica>> CierrePlanCuentas(PlanCuenta planCuenta)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarEliminarCierrePlanCuentas", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@FechaCierre", planCuenta.FechaCierre));
+                    cmd.Parameters.Add(new SqlParameter("@Estado", planCuenta.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", planCuenta.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
         public async Task<IEnumerable<PlanCuenta>> GetByMostrarPlanCuentas(Int64 IdPlanCuenta, Int32 Tipo)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
@@ -65,6 +91,84 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     await sql.OpenAsync();
 
                     if(Tipo==2)
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                response.Add(MapToCodigoNuevo(reader));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                response.Add(MapToPlanCuentas(reader));
+                            }
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<PlanCuenta>> GetByPlanCuentasSaldoFinal(Int64 IdPlanCuenta,DateTime FechaInicio, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarPlanCuentasSaldoFinal", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<PlanCuenta>();
+                    await sql.OpenAsync();
+
+                    if (Tipo == 2)
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                response.Add(MapToCodigoNuevo(reader));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                response.Add(MapToPlanCuentas(reader));
+                            }
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+        public async Task<IEnumerable<PlanCuenta>> GetByPlanCuentasSaldoFinalCero(Int64 IdPlanCuenta, DateTime FechaInicio, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarPlanCuentasSaldoFinalCero", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<PlanCuenta>();
+                    await sql.OpenAsync();
+
+                    if (Tipo == 2)
                     {
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -136,6 +240,35 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                         while (await reader.ReadAsync())
                         {
                             response.Add(MapToEstadoCuenta(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
+        public async Task<IEnumerable<LibroMayor>> GetByMostrarReporteEstadoCuentaLibroMayor(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteEstadoCuentaLibroMayor", sql))
+                {
+                    cmd.CommandTimeout = 60 * 5;
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<LibroMayor>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToLibroMayor(reader));
                         }
                     }
 
@@ -227,6 +360,34 @@ namespace Conexion.AccesoDatos.Repository.Negocio
         }
 
 
+        public async Task<IEnumerable<EstadoFinanciero>> GetByMostrarReporteEstadoResultados(Int64 IdPlanCuenta, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarReporteEstadoResultados", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdPlanCuenta", IdPlanCuenta));
+                    cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
+                    cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<EstadoFinanciero>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToEstadoResultados(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
+
         private PlanCuenta MapToPlanCuentas(SqlDataReader reader)
         {
             return new PlanCuenta()
@@ -272,6 +433,19 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             };
         }
 
+        private LibroMayor MapToLibroMayor(SqlDataReader reader)
+        {
+            return new LibroMayor()
+            {
+                FECHA = reader["FECHA"].ToString(),
+                CONCEPTO = reader["CONCEPTO"].ToString(),
+                DEBITO = reader["DEBITO"].ToString(),
+                CREDITO = reader["CREDITO"].ToString(),
+                SALDO = reader["SALDO"].ToString(),
+                BANDERA = reader["BANDERA"].ToString(),
+            };
+        }
+
         private BalanceComprobacion MapToBalanceComprobacion(SqlDataReader reader)
         {
             return new BalanceComprobacion()
@@ -283,6 +457,18 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 DEBITOS = (decimal)reader["DEBITOS"],
                 CREDITOS = (decimal)reader["CREDITOS"],
                 SALDOFINAL = (decimal)reader["SALDOFINAL"],
+            };
+        }
+
+        private EstadoFinanciero MapToEstadoResultados(SqlDataReader reader)
+        {
+            return new EstadoFinanciero()
+            {
+                CODIGO = reader["CODIGO"].ToString(),
+                CUENTA = reader["CUENTA"].ToString(),
+                PARCIAL = (decimal)reader["PARCIAL"],
+                SUBTOTAL = (decimal)reader["SUBTOTAL"],
+                TOTAL = (decimal)reader["TOTAL"],
             };
         }
 

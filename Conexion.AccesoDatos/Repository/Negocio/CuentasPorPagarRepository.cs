@@ -1,5 +1,4 @@
 ﻿using Conexion.AccesoDatos.Repository.CArchivo;
-using Conexion.AccesoDatos.Repository.CArchivo;
 using Conexion.Entidad.Administracion;
 using Conexion.Entidad.Negocio;
 using Microsoft.Extensions.Configuration;
@@ -47,6 +46,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                     cmd.Parameters.Add(new SqlParameter("@ValorTotal", porPagar.ValorTotal));
                     cmd.Parameters.Add(new SqlParameter("@TipoDocumento", porPagar.TipoDocumento));
                     cmd.Parameters.Add(new SqlParameter("@jsonContable", porPagar.jsonContable));
+                    cmd.Parameters.Add(new SqlParameter("@NumExtranjero", porPagar.NumExtranjero));
                     cmd.Parameters.Add(new SqlParameter("@Estado", porPagar.Estado));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", porPagar.Tipo));
                     await sql.OpenAsync();
@@ -62,6 +62,32 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
                         return response;
                     }
+                }
+            }
+        }
+
+        public async Task<IEnumerable<Generica>> InsertarModificarFacturasCobradas(ComisionPagada cuentasPor)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("InsertarModificarFacturasCobradas", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@NumDocumento", cuentasPor.NumDocumento));
+                    cmd.Parameters.Add(new SqlParameter("@Usuario", cuentasPor.Usuario));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", cuentasPor.Tipo));
+                    await sql.OpenAsync();
+                    //await cmd.ExecuteNonQueryAsync();
+                    var response = new List<Generica>();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToGenerica(reader));
+                        }
+                    }
+
+                    return response;
                 }
             }
         }
@@ -108,6 +134,8 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                             {
                                 pagar.AutorizacionSri = data.Tables["infoTributaria"].Rows[0]["claveAcceso"].ToString();
                                 pagar.NumDocumento = data.Tables["infoTributaria"].Rows[0]["estab"].ToString() + "-" + data.Tables["infoTributaria"].Rows[0]["ptoEmi"].ToString() + "-" + data.Tables["infoTributaria"].Rows[0]["secuencial"].ToString();
+                                pagar.RuCedula = Convert.ToString(data.Tables["infoTributaria"].Rows[0]["ruc"].ToString());
+                                pagar.RazonSocial = Convert.ToString(data.Tables["infoTributaria"].Rows[0]["razonSocial"].ToString());
                             }
                         }
 
@@ -118,8 +146,6 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                                 pagar.FechaAutorizacion = Convert.ToDateTime(data.Tables["infoFactura"].Rows[0]["fechaEmision"].ToString());
                                 pagar.FechaRegistro = Convert.ToDateTime( data.Tables["infoFactura"].Rows[0]["fechaEmision"].ToString());
                                 pagar.ValorTotal = Convert.ToDecimal(data.Tables["infoFactura"].Rows[0]["importeTotal"].ToString());
-                                pagar.RuCedula = Convert.ToString(data.Tables["infoFactura"].Rows[0]["identificacionComprador"].ToString());
-                                pagar.RazonSocial = Convert.ToString(data.Tables["infoFactura"].Rows[0]["razonSocialComprador"].ToString());
                             }
                         }
 
@@ -257,16 +283,19 @@ namespace Conexion.AccesoDatos.Repository.Negocio
 
         #endregion
 
-        public async Task<IEnumerable<CuentasPorPagar>> GetByMostrarFacturaPorPagarFecha(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo)
+        public async Task<IEnumerable<CuentasPorPagar>> GetByMostrarFacturaPorPagarFecha(Int64 IdEmpleado, DateTime FechaInicio, DateTime FechaFinal, Int32 Tipo, string TipoDocumento,string RuCedula)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
             {
                 using (SqlCommand cmd = new SqlCommand("MostrarFacturaPorPagarFecha", sql))
                 {
+                    cmd.CommandTimeout = 60 * 5;
                     cmd.CommandType = System.Data.CommandType.StoredProcedure;
                     cmd.Parameters.Add(new SqlParameter("@IdEmpleado", IdEmpleado));
                     cmd.Parameters.Add(new SqlParameter("@FechaInicio", FechaInicio));
                     cmd.Parameters.Add(new SqlParameter("@FechaFinal", FechaFinal));
+                    cmd.Parameters.Add(new SqlParameter("@TipoDocumento", TipoDocumento));
+                    cmd.Parameters.Add(new SqlParameter("@RuCedula2", RuCedula));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
                     var response = new List<CuentasPorPagar>();
                     await sql.OpenAsync();
@@ -279,7 +308,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                             {
                                 response.Add(MapToFacturaPorPagarFecha(reader));
                             }
-                            else if (Tipo == 1)
+                            else if (Tipo == 1 || Tipo == 2)
                             {
                                 response.Add(MapToFacturaPorPagarFecha2(reader));
                             }
@@ -408,7 +437,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             string path = "";
             PrmConfiguracionArchivo archivo = new PrmConfiguracionArchivo();
             CargarXLSX cargar1 = new CargarXLSX(_connectionString);
-            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, cargar.TipoDocumento);
+            archivo = cargar1.MostrarCargaArhivoConfig(0, 0, cargar.TipoDocumento,0);
             path = archivo.RutaArchivo + cargar.NombreArchivo;
             byte[] stringBytes = Convert.FromBase64String(cargar.ArchivoBase64);//Encoding.ASCII.GetBytes(cargar.ArchivoBase64);
             System.IO.File.WriteAllBytes(path, stringBytes);
@@ -430,6 +459,8 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 FechaRegistro = (DateTime)reader["FechaEmision"],
                 EstadoServicio = reader["EstadoServicio"].ToString(),
                 RazonSocial = reader["RazonSocial"].ToString(),
+                RuCedula = reader["RuCedula"].ToString(),
+                TipoDocumento = reader["TipoDocumento"].ToString(),
                 Email = reader["Email"].ToString(),
                 AutorizacionSri = reader["AutorizacionSri"].ToString(),
                 NumDocumento = reader["NumDocumento"].ToString(),
@@ -441,6 +472,11 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 EstadoPago = reader["EstadoPago"].ToString(),
                 PorRegistrar = (Int32)reader["PorRegistrar"],
                 Saldo = (decimal)reader["Saldo"],
+                Proceso = reader["Proceso"].ToString(),
+                RutaDocumento = reader["RutaDocumento"].ToString(),
+                stringArchivo64 = DevolverArchivoBase64(reader["RutaDocumento"].ToString(), reader["RutaDocumentoXML"].ToString(), reader["AutorizacionSri"].ToString()),
+                stringArchivo64PDF = DevolverArchivoPDFBase64PorPagar(reader["RutaDocumento"].ToString(), reader["AutorizacionSri"].ToString()),
+                NumExtranjero = reader["NumExtranjero"].ToString(),
             };
         }
 
@@ -469,7 +505,9 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Saldo = (decimal)reader["Saldo"],
                 IdProveedor = (Int64)reader["IdProveedor"],
                 RutaDocumento = reader["RutaDocumento"].ToString(),
-                stringArchivo64 = DevolverArchivoBase64(reader["RutaDocumento"].ToString()),
+                stringArchivo64 = DevolverArchivoBase64(reader["RutaDocumento"].ToString(), reader["RutaDocumentoXML"].ToString(), reader["AutorizacionSri"].ToString()),
+                stringArchivo64PDF = DevolverArchivoPDFBase64PorPagar(reader["RutaDocumento"].ToString(), reader["AutorizacionSri"].ToString()),
+                NumExtranjero = reader["NumExtranjero"].ToString(),
             };
         }
         public async Task<IEnumerable<Generica>> ModificarAsientoContable(Int64 IdCuentaPorPagar, string jsonFinal, int Tipo)
@@ -554,38 +592,116 @@ namespace Conexion.AccesoDatos.Repository.Negocio
             }
         }
 
-        public string DevolverArchivoBase64(string rutaDocumentoResul)
+        public string DevolverArchivoBase64(string rutaDocumentoResul,string rutaLiq,string numAutorizacion)
         {
+            
             string StringBase64 = "";
-            if (File.Exists(rutaDocumentoResul))
+            try
             {
-                byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
-                StringBase64 = Convert.ToBase64String(archivoBytes);
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    string tipoDocumento = numAutorizacion.Substring(8, 2);
+                    byte[] archivoBytes = null;
+                    if (tipoDocumento == "03")
+                    {
+                        archivoBytes = System.IO.File.ReadAllBytes(rutaLiq);
+                        StringBase64 = Convert.ToBase64String(archivoBytes);
+                    }
+                    else
+                    {
+                        archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                        StringBase64 = Convert.ToBase64String(archivoBytes);
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString(), "Log", "Detalle", 1);
+            }
+
             return StringBase64;
         }
 
         public string DevolverArchivoPDFBase64(string rutaDocumentoResul)
         {
             string StringBase64 = "";
-            if (File.Exists(rutaDocumentoResul))
+            try
             {
-                //SelectPdf.HtmlToPdf converter = new SelectPdf.HtmlToPdf();
-                //SelectPdf.PdfDocument doc = converter.ConvertHtmlString("");
-                //doc.Save(AppDomain.CurrentDomain.BaseDirectory + "Template\\invoice1.pdf");
-                //byte[] data = doc.Save();
-                //var result = Convert.ToBase64String(data);
-                //doc.Close();
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    string str11 = ".pdf";
+                    string nameArchivo = Path.GetFileName(rutaDocumentoResul);
+                    string rutaDocumento = rutaDocumentoResul.Replace(nameArchivo, "");
+                    string QuitarExtArchivo = nameArchivo.Replace(".xml", "");
+                    string RutaFinal = rutaDocumento + QuitarExtArchivo + str11;
 
-                //byte[] archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
-                //StringBase64 = Convert.ToBase64String(archivoBytes);
+                    byte[] archivoBytes = System.IO.File.ReadAllBytes(RutaFinal);
+                    StringBase64 = Convert.ToBase64String(archivoBytes);
+                }
             }
+            catch(Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString() , "Log", "Detalle", 1);
+            }
+
             return StringBase64;
         }
 
-        
+        public string DevolverArchivoPDFBase64PorPagar(string rutaDocumentoResul,string numAutorizacion)
+        {
+            string StringBase64 = "";
+            try
+            {
+                if (File.Exists(rutaDocumentoResul))
+                {
+                    string tipoDocumento = numAutorizacion.Substring(8, 2);
+                    byte[] archivoBytes = null;
+                    if (tipoDocumento == "03")
+                    {
+                        archivoBytes = System.IO.File.ReadAllBytes(rutaDocumentoResul);
+                        StringBase64 = Convert.ToBase64String(archivoBytes);
+                    }
+                    else
+                    {
+                        StringBase64 = DevolverArchivoPDFBase64(rutaDocumentoResul);
+                    }
 
+                }
+            }
+            catch (Exception ex)
+            {
+                VerErrores("ex: " + ex.Message.ToString(), "Log", "Detalle", 1);
+            }
 
+            return StringBase64;
+        }
+
+        #region VerErrores
+        public void VerErrores(string valor, string Carpeta, string rucEmpresa, int tipo)
+        {
+            try
+            {
+                if (tipo == 1)
+                {
+                    string fecha;
+                    fecha = DateTime.Now.ToString("dd-MM-yyyy");//DateTime.Now.ToShortDateString().Replace("/", "-");
+                    if (!Directory.Exists(@"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha))
+                    {
+                        Directory.CreateDirectory(@"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha);
+                    }
+
+                    string path = @"C:\\" + rucEmpresa + "\\" + Carpeta + "\\" + fecha + "\\log.txt";
+                    TextWriter tw = new StreamWriter(path, true);
+                    tw.WriteLine("A fecha de : " + DateTime.Now.ToString() + ": " + valor);
+                    tw.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+               // System.Diagnostics.EventLog.WriteEntry("Application", "Exception: " + ex.Message);
+            }
+        }
+        #endregion
 
         private Pagos MapToPagos(SqlDataReader reader)
         {
@@ -625,6 +741,7 @@ namespace Conexion.AccesoDatos.Repository.Negocio
                 Debe = (decimal)reader["Debe"],
                 Haber = (decimal)reader["Haber"],
                 tipo = reader["tipo"].ToString(),
+                NumDocumento = reader["NumDocumento"].ToString(),
             };
         }
 

@@ -43,6 +43,31 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             }
         }
 
+        public async Task<IEnumerable<Proveedor>> GetByMostrarProveedorTodos(Int64 IdProveedor, Int32 Tipo)
+        {
+            using (SqlConnection sql = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("MostrarProveedor", sql))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter("@IdProveedor", IdProveedor));
+                    cmd.Parameters.Add(new SqlParameter("@Tipo", Tipo));
+                    var response = new List<Proveedor>();
+                    await sql.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            response.Add(MapToProveedorTodos(reader));
+                        }
+                    }
+
+                    return response;
+                }
+            }
+        }
+
         public async Task<IEnumerable<Generica>> Insert(Proveedor proveedor)
         {
             using (SqlConnection sql = new SqlConnection(_connectionString))
@@ -62,6 +87,7 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                     cmd.Parameters.Add(new SqlParameter("@FechaAutorizacion", proveedor.FechaAutorizacion));
                     cmd.Parameters.Add(new SqlParameter("@FechaCaducidad", proveedor.FechaCaducidad));
                     cmd.Parameters.Add(new SqlParameter("@Estado", proveedor.Estado));
+                    cmd.Parameters.Add(new SqlParameter("@Retencion", proveedor.Retencion));
                     cmd.Parameters.Add(new SqlParameter("@Tipo", proveedor.Tipo));
                     await sql.OpenAsync();
                     //await cmd.ExecuteNonQueryAsync();
@@ -106,6 +132,16 @@ namespace Conexion.AccesoDatos.Repository.Administracion
                 FechaAutorizacion = (DateTime)reader["FechaAutorizacion"],
                 FechaCaducidad = (DateTime)reader["FechaCaducidad"],
                 Estado = (Int32)reader["Estado"],
+                Retencion = reader["Retencion"].ToString(),
+            };
+        }
+
+        private Proveedor MapToProveedorTodos(SqlDataReader reader)
+        {
+            return new Proveedor()
+            {
+                IdProveedor = (Int64)reader["IdProveedor"],
+                Nombre = reader["Nombre"].ToString(),
             };
         }
 

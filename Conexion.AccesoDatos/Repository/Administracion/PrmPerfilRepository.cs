@@ -124,7 +124,8 @@ namespace Conexion.AccesoDatos.Repository.Administracion
             return new PrmPerfil()
             {
                 IdPerfil = (Int64)reader["IdPerfil"],
-                Descripcion = reader["Descripcion"].ToString()
+                Descripcion = reader["Descripcion"].ToString(),
+                Estado = (Int32)reader["Estado"],
             };
         }
 
